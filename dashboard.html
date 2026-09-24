@@ -1,0 +1,2605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HRMS Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Using FontAwesome for Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- AI Assistant Stylesheet -->
+<link rel="stylesheet" href="ai-assistant.css">
+
+
+<style>
+/* ================= GLOBAL STYLES ================= */
+*{ margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
+
+:root{
+    --primary:#2F80ED;
+    --secondary:#56CCF2;
+    --accent:#27AE60;
+    --danger:#EF4444;
+    --warning:#F59E0B;
+    --background:#F8FAFC;
+    --card:#FFFFFF;
+    --text:#1F2937;
+    --border:#EEF2F7;
+    --sidebar-width: 260px;
+}
+
+body{ background:var(--background); color:var(--text); display:flex; min-height:100vh; }
+
+/* ================= SIDEBAR (User Specific) ================= */
+.sidebar{
+    width: var(--sidebar-width);
+    background: white;
+    border-right: 1px solid var(--border);
+    position: fixed;
+    height: 100%;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+/* Slim scrollbar for the sidebar so nav items are always reachable */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #D1D5DB;
+    border-radius: 3px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #9CA3AF;
+}
+
+.brand {
+    padding: 25px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.menu-category {
+    padding: 20px 25px 10px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #9CA3AF;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.sidebar a{
+    display:flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 25px;
+    color: #4B5563;
+    text-decoration:none;
+    transition:.2s;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.sidebar a:hover, .sidebar a.active{
+    background: #EFF6FF;
+    color: var(--primary);
+    border-right: 3px solid var(--primary);
+}
+
+/* ================= MAIN CONTENT ================= */
+.main-content{
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
+    display: flex;
+    flex-direction: column;
+}
+
+header{
+    background: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 99;
+}
+
+.user-info { display: flex; align-items: center; gap: 15px; }
+
+/* User Profile Dropdown Styles */
+.user-dropdown-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.user-profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 6px 14px 6px 8px;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    color: #1e293b;
+}
+
+.user-profile-btn:hover, .user-profile-btn.active {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.profile-avatar-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar { width: 40px; height: 40px; background: var(--secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0; }
+
+.status-indicator {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    background-color: #10b981;
+    border: 2px solid white;
+    border-radius: 50%;
+}
+
+.user-details-text {
+    text-align: left;
+    line-height: 1.25;
+}
+
+.user-details-text strong {
+    display: block;
+    font-size: 13px;
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.user-details-text small {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.dropdown-chevron {
+    font-size: 11px;
+    color: #94a3b8;
+    transition: transform 0.2s ease;
+    margin-left: 2px;
+}
+
+.user-profile-btn.active .dropdown-chevron {
+    transform: rotate(180deg);
+}
+
+.profile-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 270px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    padding: 8px;
+    display: none;
+    z-index: 1000;
+    animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.profile-dropdown-menu.show {
+    display: block;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.dropdown-header-card {
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dropdown-header-info {
+    overflow: hidden;
+    flex: 1;
+}
+
+.dropdown-header-info strong {
+    display: block;
+    font-size: 14px;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dropdown-header-info .user-email {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    margin-top: 2px;
+}
+
+.dropdown-role-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 12px;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-admin {
+    background: #e0e7ff;
+    color: #4338ca;
+}
+
+.badge-employee {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: #f1f5f9;
+    margin: 6px 0;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    font-size: 13px;
+    color: #334155;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.dropdown-item:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.dropdown-item.danger-item {
+    color: #ef4444;
+}
+
+.dropdown-item.danger-item:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.dropdown-item i {
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+}
+
+.page-container { padding: 30px; }
+.section { display: none; animation: fadeIn 0.3s ease; }
+.section.active { display: block; }
+
+/* ================= CARDS & WIDGETS ================= */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border-left: 5px solid var(--primary);
+}
+
+.stat-card h3 { font-size: 14px; color: #6B7280; margin-bottom: 10px; }
+.stat-card .value { font-size: 28px; font-weight: 700; color: var(--text); }
+
+.content-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: #1a6ad4; }
+.btn-success { background: var(--accent); color: white; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-warning { background: var(--warning); color: white; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+
+/* ================= TABLES ================= */
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th, td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: #6B7280; font-weight: 600; font-size: 13px; text-transform: uppercase; }
+tr:hover { background: #f9fafb; }
+
+.status-badge { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.status-active { background: #DEF7EC; color: #03543F; }
+.status-pending { background: #FEF3C7; color: #92400E; }
+.status-rejected { background: #FEE2E2; color: #991B1B; }
+.status-neutral { background: #E5E7EB; color: #374151; }
+
+/* ================= FORMS ================= */
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; }
+.form-control { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; outline: none; font-family: 'Inter', sans-serif; }
+.form-control:focus { border-color: var(--primary); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+/* ================= MODAL ================= */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+    background: white;
+    border-radius: 14px;
+    padding: 30px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal h3 { margin-bottom: 20px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+
+/* Empty state */
+.empty-state { text-align: center; color: #9CA3AF; padding: 20px; }
+
+@keyframes fadeIn { from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+
+/* Modern Collapsible Onboarding Checklist Styles */
+.onboarding-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.onboarding-card:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+    border-color: #cbd5e1;
+}
+
+.onb-card-header {
+    padding: 16px 22px;
+    background: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.onb-card-header:hover {
+    background-color: #f8fafc;
+}
+
+.onb-user-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.onb-avatar {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #2F80ED, #7B61FF);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(47, 128, 237, 0.25);
+}
+
+.onb-user-details strong {
+    font-size: 15px;
+    color: #0f172a;
+    font-weight: 600;
+    transition: color 0.15s ease;
+}
+
+.onb-card-header:hover .onb-user-details strong {
+    color: var(--primary);
+}
+
+.onb-meta-tags {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+}
+
+.onb-tag {
+    font-size: 11px;
+    padding: 2px 9px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.onb-tag-code {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.onb-tag-dept {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.onb-progress-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.onb-progress-stats {
+    text-align: right;
+}
+
+.onb-progress-count {
+    font-size: 12px;
+    color: #64748b;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.onb-progress-percent {
+    font-weight: 700;
+    color: #10b981;
+    font-size: 14px;
+}
+
+.onb-progress-bar-bg {
+    width: 120px;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.onb-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+    border-radius: 10px;
+    transition: width 0.4s ease;
+}
+
+.onb-chevron-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, transform 0.25s ease;
+}
+
+.onb-chevron {
+    color: #64748b;
+    font-size: 13px;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.onboarding-card.expanded .onb-chevron {
+    transform: rotate(180deg);
+    color: var(--primary);
+}
+
+.onboarding-card.expanded .onb-chevron-badge {
+    background: #e0e7ff;
+}
+
+.onb-card-body {
+    display: none;
+    padding: 16px 22px 22px 22px;
+    border-top: 1px solid #f1f5f9;
+    background: #f8fafc;
+    animation: fadeIn 0.25s ease-in-out;
+}
+
+.onboarding-card.expanded .onb-card-body {
+    display: block;
+}
+
+.onb-task-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+.onb-task-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #64748b;
+    padding: 8px 14px;
+    background: transparent;
+    border-bottom: 2px solid #e2e8f0;
+    font-weight: 600;
+}
+
+.onb-task-row {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.onb-task-row:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.onb-task-row td {
+    padding: 14px 16px;
+    border: none;
+    font-size: 13.5px;
+    color: #1e293b;
+    vertical-align: middle;
+}
+
+.onb-task-row td:first-child {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+.onb-task-row td:last-child {
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.onb-task-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+
+.onb-task-name i {
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.onb-due-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+.onb-status-select {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #cbd5e1;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.onb-status-select.Pending,
+.onb-status-select[data-status="Pending"] {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
+
+.onb-status-select.In-Progress,
+.onb-status-select[data-status="In Progress"] {
+    background: #e0f2fe;
+    color: #0369a1;
+    border-color: #bae6fd;
+}
+
+.onb-status-select.Completed,
+.onb-status-select[data-status="Completed"] {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #a7f3d0;
+}
+
+/* ================= RESPONSIVE DESIGN ================= */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 10px;
+}
+.table-responsive table {
+    min-width: 600px;
+    margin-top: 0;
+}
+
+.mobile-nav-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: 18px;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.mobile-nav-toggle:hover {
+    background: #E2E8F0;
+    color: var(--primary);
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 1040;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.sidebar-overlay.show {
+    display: block;
+    opacity: 1;
+}
+
+@media (max-width: 991px) {
+    .mobile-nav-toggle {
+        display: flex;
+    }
+    .sidebar {
+        left: -280px;
+        top: 0;
+        bottom: 0;
+        height: 100vh;
+        z-index: 1050;
+        transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 4px 0 25px rgba(0,0,0,0.15);
+    }
+    .sidebar.mobile-open {
+        left: 0;
+    }
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+    header {
+        padding: 12px 20px;
+    }
+    #page-title {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 768px) {
+    .page-container {
+        padding: 15px;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    .content-card {
+        padding: 16px;
+    }
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .card-header .btn {
+        width: 100%;
+    }
+    .modal {
+        width: 94vw;
+        max-height: 85vh;
+        padding: 20px;
+    }
+    .form-control, select, input {
+        font-size: 16px;
+    }
+    .user-details-text {
+        display: none;
+    }
+    .user-profile-btn {
+        padding: 4px 8px;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- MOBILE SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebarNav">
+    <div class="brand">
+        <span>Human Resources</span>
+    </div>
+
+    <div class="menu-category">Core HR</div>
+    <a href="#" onclick="showSection('dashboard')" class="active"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></a>
+    <a href="#" onclick="showSection('employees')"><i class="fa-solid fa-user-tie"></i> <span>Employee Records</span></a>
+    <a href="#" onclick="showSection('accounts')"><i class="fa-solid fa-user-gear"></i> <span>User Account Management</span></a>
+    <a href="#" onclick="showSection('ess')"><i class="fa-solid fa-id-card"></i> <span>My Profile</span></a>
+
+    <div class="menu-category">Recruitment</div>
+    <a href="#" onclick="showSection('applicants')"><i class="fa-solid fa-file-contract"></i> <span>Applicant Mgmt</span></a>
+    <a href="#" onclick="showSection('onboarding')"><i class="fa-solid fa-handshake"></i> <span>Onboarding</span></a>
+
+    <div class="menu-category">Communication & AI</div>
+    <a href="#" onclick="showSection('announcements')"><i class="fa-solid fa-bullhorn"></i> <span>Announcements</span></a>
+    <a href="#" onclick="openAIAssistant(); closeMobileSidebar();"><i class="fa-solid fa-sparkles" style="color:#7B61FF;"></i> <span style="font-weight:600; background:linear-gradient(135deg, #2F80ED, #7B61FF); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">AI Assistant</span></a>
+</div>
+
+
+<!-- MAIN CONTENT -->
+<div class="main-content">
+    <header>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="mobile-nav-toggle" id="mobileNavToggle" onclick="toggleMobileSidebar()" aria-label="Toggle Navigation">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <h3 id="page-title">Dashboard Overview</h3>
+        </div>
+        <div class="user-dropdown-container">
+            <div class="user-profile-btn" id="profileDropdownBtn" onclick="toggleProfileDropdown(event)" role="button" aria-haspopup="true" aria-expanded="false">
+                <div class="profile-avatar-wrapper">
+                    <div class="avatar" id="adminAvatar">AD</div>
+                    <span class="status-indicator" title="Online"></span>
+                </div>
+                <div class="user-details-text">
+                    <strong id="adminName">Admin User</strong>
+                </div>
+                <i class="fa-solid fa-chevron-down dropdown-chevron"></i>
+            </div>
+
+            <div class="profile-dropdown-menu" id="profileDropdownMenu">
+                <div class="dropdown-header-card">
+                    <div class="avatar" id="dropdownAvatar" style="width:42px; height:42px; font-size:15px; background:var(--secondary);">AD</div>
+                    <div class="dropdown-header-info">
+                        <strong id="dropdownName">Admin User</strong>
+                        <span class="user-email" id="dropdownEmail">admin@hrms.com</span>
+                        <span class="dropdown-role-badge badge-admin" id="dropdownRole">Admin</span>
+                    </div>
+                </div>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" onclick="showSection('ess'); closeAllDropdowns();">
+                    <i class="fa-solid fa-user" style="color:var(--primary);"></i>
+                    <span>Profile</span>
+                </a>
+                <div class="dropdown-divider"></div>
+                <button class="dropdown-item danger-item" onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Sign Out</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-container">
+
+<!-- 1. DASHBOARD HOME -->
+        <div id="dashboard" class="section active">
+            <div class="stats-grid">
+                <div class="stat-card" style="border-color: var(--primary);">
+                    <h3>Total Headcount</h3>
+                    <div class="value" id="dash-total-emp">0</div>
+                </div>
+                <div class="stat-card" style="border-color: var(--accent);">
+                    <h3>New Hires (30 days)</h3>
+                    <div class="value" id="dash-new-hires">0</div>
+                </div>
+                <div class="stat-card" style="border-color: var(--secondary);">
+                    <h3>New Applicants</h3>
+                    <div class="value" id="dash-applicants">0</div>
+                </div>
+                <div class="stat-card" style="border-color: var(--warning);">
+                    <h3>Retention Rate</h3>
+                    <div class="value" id="dash-retention">0%</div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>Recent Activities</h3>
+                </div>
+                <p>Welcome to your centralized HR Command Center. Use the sidebar to navigate modules.</p>
+            </div>
+
+            <!-- 1b. WORKFORCE ANALYTICS (live data) -->
+            <div class="stats-grid">
+                <div class="content-card">
+                    <h3>Department Distribution</h3>
+                    <div id="department-distribution" style="height:150px; display:flex; align-items:flex-end; gap:20px; padding-top:20px;">
+                        <div style="color:#9CA3AF; align-self:center;">Loading...</div>
+                    </div>
+                    <div id="department-labels" style="display:flex; gap:20px; margin-top:10px; font-size:12px;"></div>
+                </div>
+                <div class="content-card">
+                    <h3>Retention Rate</h3>
+                    <h1 id="retention-value" style="font-size:48px; color:var(--accent); margin-top:20px;">--</h1>
+                    <p style="color:#666;">% of total headcount that is Active</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. EMPLOYEE RECORDS (CORE HCM) -->
+        <div id="employees" class="section">
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>Employee Directory</h3>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employee-table-body">
+                            <tr><td colspan="6" class="empty-state">Loading employees...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. USER ACCOUNT MANAGEMENT -->
+        <div id="accounts" class="section">
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>User Account Management</h3>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Department</th>
+                                <th>Employee ID</th>
+                                <th>Position</th>
+                                <th>Created</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-account-table-body">
+                            <tr><td colspan="8" class="empty-state">Loading user accounts...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. ESS (SELF SERVICE) -->
+        <div id="ess" class="section">
+            <div class="form-row">
+                <div class="content-card">
+                    <h3>My Profile</h3>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="ess-name" class="form-control" value="Admin User">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="text" id="ess-email" class="form-control" value="admin@gmail.com" disabled>
+                    </div>
+                    <button class="btn btn-primary" onclick="updateAdminProfile()">Update Profile</button>
+                </div>
+                <div class="content-card">
+                    <h3>Quick Actions</h3>
+                    <p style="color:#6B7280; font-size:14px;">Use the sidebar to navigate HR modules.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. APPLICANT MANAGEMENT -->
+        <div id="applicants" class="section">
+            <div class="content-card">
+                <div class="card-header">
+                    <div>
+                        <h3>Recruitment Pipeline</h3>
+                        <small style="color:#64748B;">Candidates who submitted their details via the public portal or HR.</small>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <a href="apply.html" target="_blank" class="btn" style="background:#EFF6FF; color:var(--primary); text-decoration:none; font-size:13px;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Application Form</a>
+                        <button class="btn btn-primary" onclick="openApplicantModal()">+ Add Candidate</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Candidate</th>
+                                <th>Position</th>
+                                <th>Applied Date</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="applicant-table-body">
+                            <tr><td colspan="5" class="empty-state">Loading applicants...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+<!-- 5. ONBOARDING -->
+        <div id="onboarding" class="section">
+            <div class="stats-grid">
+                <div class="stat-card" style="border-color: var(--primary);">
+                    <h3>Active Onboardings</h3>
+                    <div class="value" id="onb-active-count">0</div>
+                </div>
+                <div class="stat-card" style="border-color: var(--accent);">
+                    <h3>Completed Tasks</h3>
+                    <div class="value" id="onb-completed-count">0</div>
+                </div>
+                <div class="stat-card" style="border-color: var(--warning);">
+                    <h3>Average Progress</h3>
+                    <div class="value" id="onb-avg-progress">0%</div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="content-card">
+                    <h3>Start Onboarding Checklist</h3>
+                    <p style="color:#6B7280; font-size:14px; margin-bottom:15px;">Generate the standard 8-task onboarding checklist for a new hire.</p>
+                    <div class="form-group">
+                        <label>Employee</label>
+                        <select id="onb-start-employee" class="form-control">
+                            <option value="">Select an employee...</option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-success" onclick="startOnboardingChecklist()">Generate Checklist</button>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <h3>Add Custom Task</h3>
+                    <p style="color:#6B7280; font-size:14px; margin-bottom:15px;">Assign a custom onboarding task to an employee.</p>
+                    <div class="form-group">
+                        <label>Employee</label>
+                        <select id="onb-task-employee" class="form-control">
+                            <option value="">Select an employee...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Task</label>
+                        <input type="text" id="onb-task-text" class="form-control" placeholder="e.g. Security badge setup">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Due Date</label>
+                            <input type="date" id="onb-task-due" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="onb-task-status" class="form-control">
+                                <option>Pending</option>
+                                <option>In Progress</option>
+                                <option>Completed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" onclick="addOnboardingTask()">Add Task</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>Onboarding Checklists</h3>
+                    <button class="btn btn-primary" onclick="loadOnboarding()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                </div>
+                <div id="onboarding-summary"></div>
+            </div>
+        </div>
+
+        <!-- 6. ANNOUNCEMENTS MODULE -->
+        <div id="announcements" class="section">
+            <div class="stats-grid">
+                <div class="stat-card" style="border-color: var(--primary);">
+                    <h3>Total Announcements</h3>
+                    <div class="value" id="ann-total">0</div>
+                </div>
+                <div class="stat-card" style="border-color: var(--accent);">
+                    <h3>Published By You</h3>
+                    <div class="value" id="ann-mine">0</div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="content-card">
+                    <h3 id="ann-form-title">Publish Announcement</h3>
+                    <form onsubmit="publishAnnouncement(event)">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="ann-title" class="form-control" placeholder="e.g. Office Holiday Notice" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Content</label>
+                            <textarea id="ann-content" class="form-control" rows="4" placeholder="Write the announcement details..." required></textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn" style="background:#E5E7EB; color:#374151; display:none;" id="ann-cancel-btn" onclick="resetAnnouncementForm()">Cancel Edit</button>
+                            <button type="submit" class="btn btn-primary">Publish</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3>All Announcements</h3>
+                        <button class="btn btn-primary" onclick="loadAdminAnnouncements()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Content</th>
+                                <th>Author</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="announcement-table-body">
+                            <tr><td colspan="5" style="text-align:center; color:#9CA3AF;">Loading announcements...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ADD / EDIT EMPLOYEE MODAL -->
+<div class="modal-overlay" id="employeeModal">
+    <div class="modal">
+        <h3 id="employeeModalTitle">Add Employee</h3>
+        <div class="form-group">
+            <label>Employee ID</label>
+            <input type="text" id="emp-id" class="form-control" placeholder="e.g. EMP005">
+        </div>
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="emp-name" class="form-control" placeholder="John Doe">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="emp-email" class="form-control" placeholder="john@company.com">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Department</label>
+                <input type="text" id="emp-department" class="form-control" placeholder="IT">
+            </div>
+            <div class="form-group">
+                <label>Role</label>
+                <input type="text" id="emp-role" class="form-control" placeholder="Developer">
+            </div>
+        </div>
+<div class="form-group">
+            <label>Status</label>
+            <select id="emp-status" class="form-control">
+                <option>Active</option>
+                <option>On Leave</option>
+                <option>Onboarding</option>
+                <option>Inactive</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Contact Number</label>
+                <input type="text" id="emp-phone" class="form-control" placeholder="0917-000-0000">
+            </div>
+            <div class="form-group">
+                <label>Gender</label>
+                <select id="emp-gender" class="form-control">
+                    <option value="">Select...</option>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Address</label>
+            <input type="text" id="emp-address" class="form-control" placeholder="Street, City">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date of Birth</label>
+                <input type="date" id="emp-dob" class="form-control" onchange="calculateEmployeeAge()">
+            </div>
+            <div class="form-group">
+                <label>Emergency Contact Number</label>
+                <input type="text" id="emp-emergency" class="form-control" placeholder="0917-000-0000">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Surname</label>
+                <input type="text" id="emp-last-name" class="form-control" placeholder="Dela Cruz">
+            </div>
+            <div class="form-group">
+                <label>First Name</label>
+                <input type="text" id="emp-first-name" class="form-control" placeholder="Juan">
+            </div>
+            <div class="form-group">
+                <label>Middle Name (Optional)</label>
+                <input type="text" id="emp-middle-name" class="form-control" placeholder="Santos">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Age</label>
+                <input type="number" id="emp-age" class="form-control" placeholder="30" min="0" max="120" readonly style="background:#F3F4F6;">
+            </div>
+            <div class="form-group">
+                <label>Place of Birth</label>
+                <input type="text" id="emp-place-of-birth" class="form-control" placeholder="Manila">
+            </div>
+            <div class="form-group">
+                <label>TIN</label>
+                <input type="text" id="emp-tin" class="form-control" placeholder="000-000-000-000">
+            </div>
+            <div class="form-group">
+                <label>Civil Status</label>
+                <select id="emp-civil-status" class="form-control">
+                    <option value="">Select...</option>
+                    <option>Single</option>
+                    <option>Married</option>
+                    <option>Widowed</option>
+                    <option>Separated</option>
+                    <option>Divorced</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" style="background:#E5E7EB; color:#374151;" onclick="closeEmployeeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveEmployee()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- EMPLOYEE DETAILS MODAL -->
+<div class="modal-overlay" id="employeeDetailModal">
+    <div class="modal" style="max-width:640px; border-radius:14px; padding:24px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+            <h3 id="employeeDetailTitle" style="margin:0; font-size:18px; font-weight:700;"><i class="fa-solid fa-id-card" style="color:var(--primary); margin-right:8px;"></i> Employee Profile</h3>
+            <button class="btn btn-sm" style="background:#F3F4F6; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="closeEmployeeDetail()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- HEADER CARD -->
+        <div style="display:flex; align-items:center; gap:16px; padding:18px; background:linear-gradient(135deg, #F8FAFC, #EFF6FF); border:1px solid #E2E8F0; border-radius:12px; margin-bottom:20px;">
+            <div class="avatar" style="width:60px; height:60px; font-size:24px; font-weight:700; background:var(--primary); color:#FFF; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);" id="detail-avatar">--</div>
+            <div style="flex:1;">
+                <div style="font-size:20px; font-weight:700; color:#1F2937;" id="detail-name">-</div>
+                <div style="color:#4B5563; font-size:14px; font-weight:500; margin-top:2px;" id="detail-role-dept">-</div>
+            </div>
+            <div id="detail-status-pill"></div>
+        </div>
+
+        <!-- GRID SECTIONS -->
+        <div style="display:flex; flex-direction:column; gap:16px;">
+
+            <!-- SECTION 1: PERSONAL & DEMOGRAPHICS -->
+            <div style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+                <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-user"></i> Personal Details & Demographics
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; font-size:13px;">
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Surname</label><div style="font-weight:600; color:#111827;" id="detail-lastname">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">First Name</label><div style="font-weight:600; color:#111827;" id="detail-firstname">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Middle Name</label><div style="font-weight:600; color:#111827;" id="detail-middlename">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Date of Birth</label><div style="font-weight:600; color:#111827;" id="detail-dob">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Age</label><div style="font-weight:600; color:#111827;" id="detail-age">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Gender</label><div style="font-weight:600; color:#111827;" id="detail-gender">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Civil Status</label><div style="font-weight:600; color:#111827;" id="detail-civilstatus">-</div></div>
+                    <div style="grid-column: span 2;"><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Place of Birth</label><div style="font-weight:600; color:#111827;" id="detail-placeofbirth">-</div></div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: ORGANIZATIONAL DETAILS -->
+            <div style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+                <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-building-user"></i> Organizational Details
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; font-size:13px;">
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Employee ID</label><div style="font-weight:700; color:var(--primary);" id="detail-empid">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Department</label><div style="font-weight:600; color:#111827;" id="detail-department">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Position / Role</label><div style="font-weight:600; color:#111827;" id="detail-role">-</div></div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: CONTACT & LOCATION -->
+            <div style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+                <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-phone"></i> Contact & Location
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:13px;">
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Email Address</label><div style="font-weight:600; color:#111827;" id="detail-email">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Contact Number</label><div style="font-weight:600; color:#111827;" id="detail-phone">-</div></div>
+                    <div style="grid-column: 1 / -1;"><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Home Address</label><div style="font-weight:600; color:#111827;" id="detail-address">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Emergency Contact</label><div style="font-weight:600; color:#111827;" id="detail-emergency">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">TIN Number</label><div style="font-weight:600; color:#111827;" id="detail-tin">-</div></div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="modal-actions" style="margin-top:20px;">
+            <button class="btn btn-primary" onclick="closeEmployeeDetail()"><i class="fa-solid fa-check"></i> Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- CREATE USER ACCOUNT MODAL -->
+<div class="modal-overlay" id="accountModal">
+    <div class="modal">
+        <h3 id="account-modal-title">Create User Account</h3>
+        <p style="color:#6B7280; font-size:13px; margin-bottom:15px;">This account will be able to sign in to the employee portal.</p>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="acc-name" class="form-control" placeholder="Jane Smith">
+            </div>
+            <div class="form-group">
+                <label>Employee ID</label>
+                <input type="text" id="acc-employee-id" class="form-control" placeholder="EMP005">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="acc-email" class="form-control" placeholder="jane@company.com">
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="acc-password" class="form-control" placeholder="At least 6 characters">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Role</label>
+                <select id="acc-role" class="form-control">
+                    <option value="employee">Employee</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Department</label>
+                <input type="text" id="acc-department" class="form-control" placeholder="IT">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Position (optional)</label>
+            <select id="acc-position" class="form-control">
+                <option value="">Select...</option>
+                <option value="Manager">Manager</option>
+                <option value="Staff">Staff</option>
+                <option value="Team Leader">Team Leader</option>
+            </select>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" style="background:#E5E7EB; color:#374151;" onclick="closeCreateAccountModal()">Cancel</button>
+            <button class="btn btn-primary" id="account-save-button" onclick="saveUserAccount()">Create Account</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADD APPLICANT MODAL -->
+<div class="modal-overlay" id="applicantModal">
+    <div class="modal" style="max-width:680px; border-radius:14px; padding:24px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #E5E7EB; padding-bottom:12px; margin-bottom:16px;">
+            <div>
+                <h3 style="margin:0; font-size:18px; font-weight:700; color:#111827;"><i class="fa-solid fa-user-plus" style="color:var(--primary); margin-right:8px;"></i> Add Candidate / Applicant</h3>
+                <p style="margin:4px 0 0 0; color:#6B7280; font-size:13px;">Candidate information entered here automatically transfers to Employee Details when hired.</p>
+            </div>
+            <button class="btn btn-sm" style="background:#F3F4F6; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="closeApplicantModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- SECTION 1: PERSONAL INFORMATION -->
+        <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <i class="fa-solid fa-address-card"></i> Personal Details & Demographics
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>First Name <span style="color:#EF4444;">*</span></label>
+                <input type="text" id="app-first-name" class="form-control" placeholder="Juan" required>
+            </div>
+            <div class="form-group">
+                <label>Middle Name</label>
+                <input type="text" id="app-middle-name" class="form-control" placeholder="Santos">
+            </div>
+            <div class="form-group">
+                <label>Surname <span style="color:#EF4444;">*</span></label>
+                <input type="text" id="app-surname" class="form-control" placeholder="Dela Cruz" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date of Birth</label>
+                <input type="date" id="app-dob" class="form-control" onchange="calculateAppAge()">
+            </div>
+            <div class="form-group">
+                <label>Age</label>
+                <input type="number" id="app-age" class="form-control" placeholder="25" readonly style="background:#F3F4F6;">
+            </div>
+            <div class="form-group">
+                <label>Gender</label>
+                <select id="app-gender" class="form-control">
+                    <option value="">Select...</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Civil Status</label>
+                <select id="app-civil-status" class="form-control">
+                    <option value="">Select...</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Widowed">Widowed</option>
+                    <option value="Separated">Separated</option>
+                    <option value="Divorced">Divorced</option>
+                </select>
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label>Place of Birth</label>
+                <input type="text" id="app-place-of-birth" class="form-control" placeholder="Manila">
+            </div>
+        </div>
+
+        <!-- SECTION 2: RECRUITMENT & POSITION DETAILS -->
+        <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-top:14px; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <i class="fa-solid fa-briefcase"></i> Position & Department
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Position Applied <span style="color:#EF4444;">*</span></label>
+                <input type="text" id="app-position" class="form-control" placeholder="e.g. Software Engineer" required>
+            </div>
+            <div class="form-group">
+                <label>Target Department</label>
+                <input type="text" id="app-department" class="form-control" placeholder="e.g. IT">
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="app-status" class="form-control">
+                    <option value="New">New</option>
+                    <option value="Interviewing">Interviewing</option>
+                    <option value="Hired">Hired</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- SECTION 3: CONTACT & STATUTORY -->
+        <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-top:14px; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <i class="fa-solid fa-envelope-open-text"></i> Contact & Identifiers
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="app-email" class="form-control" placeholder="juan@company.com">
+            </div>
+            <div class="form-group">
+                <label>Contact Number</label>
+                <input type="text" id="app-phone" class="form-control" placeholder="0917-000-0000">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Home Address</label>
+            <input type="text" id="app-address" class="form-control" placeholder="Street, City, Province">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>TIN Number</label>
+                <input type="text" id="app-tin" class="form-control" placeholder="000-000-000-000">
+            </div>
+            <div class="form-group">
+                <label>Emergency Contact</label>
+                <input type="text" id="app-emergency" class="form-control" placeholder="0917-999-0000">
+            </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:20px;">
+            <button class="btn" style="background:#E5E7EB; color:#374151;" onclick="closeApplicantModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveApplicant()"><i class="fa-solid fa-floppy-disk"></i> Save Candidate</button>
+        </div>
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+
+// API_BASE is provided globally by auth.js
+
+// ================= MOBILE NAVIGATION LOGIC =================
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebarNav');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('mobile-open');
+        overlay.classList.toggle('show');
+    }
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.getElementById('sidebarNav');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar && overlay) {
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.remove('show');
+    }
+}
+
+// ================= NAVIGATION LOGIC =================
+function showSection(sectionId) {
+    closeMobileSidebar();
+    document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+    document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
+
+    document.getElementById(sectionId).classList.add('active');
+
+    // Update Sidebar Active State
+    const links = document.querySelectorAll('.sidebar a');
+    links.forEach(link => {
+        if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(sectionId)) {
+            link.classList.add('active');
+        }
+    });
+
+    const titles = {
+        'dashboard': 'Dashboard Overview',
+        'employees': 'Employee Records Management',
+        'accounts': 'User Account Management',
+        'ess': 'My Profile',
+        'applicants': 'Applicant Management',
+        'onboarding': 'New Hire Onboarding',
+        'announcements': 'Company Announcements'
+    };
+    document.getElementById('page-title').innerText = titles[sectionId] || 'HRMS';
+}
+
+function showSectionFromMenu(sectionId) {
+    // Programmatically trigger section (for Quick Actions)
+    document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+    document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
+    document.getElementById(sectionId).classList.add('active');
+    const links = document.querySelectorAll('.sidebar a');
+    links.forEach(link => {
+        if (link.getAttribute('onclick').includes(sectionId)) {
+            link.classList.add('active');
+        }
+    });
+    const titles = {
+        'dashboard': 'Dashboard Overview',
+        'employees': 'Employee Records Management',
+        'accounts': 'User Account Management',
+        'ess': 'My Profile',
+        'applicants': 'Applicant Management',
+        'onboarding': 'New Hire Onboarding',
+        'announcements': 'Company Announcements'
+    };
+    document.getElementById('page-title').innerText = titles[sectionId] || 'HRMS';
+}
+
+// ================= HELPERS =================
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+function statusBadge(status) {
+    const map = {
+        'Active': 'status-active',
+        'New': 'status-pending',
+        'Pending': 'status-pending',
+        'Interviewing': 'status-pending',
+        'Onboarding': 'status-pending',
+        'In Progress': 'status-pending',
+        'Completed': 'status-active',
+        'Rejected': 'status-rejected',
+        'Inactive': 'status-rejected'
+    };
+    const cls = map[status] || 'status-neutral';
+    return `<span class="status-badge ${cls}">${escapeHtml(status)}</span>`;
+}
+
+async function apiFetch(url, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`,
+        ...(options.headers || {})
+    };
+
+    const targetUrl = window.getApiUrl(url);
+    let res;
+    try {
+        res = await fetch(targetUrl, { ...options, headers });
+    } catch (error) {
+        throw new Error(`Unable to reach the HRMS API at ${targetUrl}. Start Apache and verify PostgreSQL is running.`);
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        if ((res.status === 401 || res.status === 403) && data.error && (data.error.includes('token') || data.error.includes('Access denied'))) {
+            clearAuth();
+            window.location.href = 'index.html';
+            return;
+        }
+        throw new Error(data.error || 'Request failed. PostgreSQL did not complete the operation.');
+    }
+    return data;
+}
+
+// ================= DASHBOARD STATS =================
+async function loadDashboardStats() {
+    try {
+        const stats = await apiFetch('/dashboard/stats');
+        document.getElementById('dash-total-emp').innerText = stats.totalEmployees || 0;
+        document.getElementById('dash-new-hires').innerText = stats.newHires || 0;
+        document.getElementById('dash-applicants').innerText = stats.totalApplicants || 0;
+        document.getElementById('dash-retention').innerText = (stats.retentionRate || 0) + '%';
+        document.getElementById('retention-value').innerText = (stats.retentionRate || 0) + '%';
+
+        // Render department distribution as a bar chart (live data)
+        const dist = stats.departmentDistribution || [];
+        const colors = ['var(--primary)', 'var(--secondary)', 'var(--accent)', 'var(--warning)', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+        const chartEl = document.getElementById('department-distribution');
+        const labelsEl = document.getElementById('department-labels');
+
+        if (!dist || dist.length === 0) {
+            chartEl.innerHTML = '<div style="color:#9CA3AF; align-self:center;">No department data yet.</div>';
+            labelsEl.innerHTML = '';
+        } else {
+            const maxCount = Math.max(...dist.map(d => d.count), 1);
+            chartEl.innerHTML = dist.map((d, i) => `
+                <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                    <span style="font-size:12px; font-weight:600; color:#374151;">${escapeHtml(d.count)}</span>
+                    <div style="width:40px; height:${Math.max((d.count / maxCount) * 100, 6)}%; background:${colors[i % colors.length]}; border-radius:5px 5px 0 0;" title="${escapeHtml(d.department)}"></div>
+                </div>
+            `).join('');
+            labelsEl.innerHTML = dist.map((d, i) => `
+                <span style="color:#6B7280;">${escapeHtml(d.department)}</span>
+            `).join('');
+        }
+    } catch (err) {
+        console.error('Failed to load dashboard stats:', err.message);
+    }
+}
+
+// ================= ADMIN PROFILE & DROPDOWN =================
+function toggleProfileDropdown(event) {
+    if (event) event.stopPropagation();
+    const btn = document.getElementById('profileDropdownBtn');
+    const menu = document.getElementById('profileDropdownMenu');
+    if (!menu || !btn) return;
+    
+    const isShowing = menu.classList.contains('show');
+    closeAllDropdowns();
+    if (!isShowing) {
+        menu.classList.add('show');
+        btn.classList.add('active');
+        btn.setAttribute('aria-expanded', 'true');
+    }
+}
+
+function closeAllDropdowns() {
+    const menus = document.querySelectorAll('.profile-dropdown-menu');
+    const btns = document.querySelectorAll('.user-profile-btn');
+    menus.forEach(m => m.classList.remove('show'));
+    btns.forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-expanded', 'false');
+    });
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.user-dropdown-container')) {
+        closeAllDropdowns();
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeAllDropdowns();
+    }
+});
+
+function loadAdminProfile() {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    const initials = (user.name || 'AD').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+    if (document.getElementById('adminName')) document.getElementById('adminName').innerText = user.name || 'Admin User';
+    if (document.getElementById('adminAvatar')) document.getElementById('adminAvatar').innerText = initials;
+
+    // Inner dropdown card details
+    if (document.getElementById('dropdownName')) document.getElementById('dropdownName').innerText = user.name || 'Admin User';
+    if (document.getElementById('dropdownEmail')) document.getElementById('dropdownEmail').innerText = user.email || 'admin@hrms.com';
+    if (document.getElementById('dropdownAvatar')) document.getElementById('dropdownAvatar').innerText = initials;
+    if (document.getElementById('dropdownRole')) {
+        const roleEl = document.getElementById('dropdownRole');
+        roleEl.innerText = user.role === 'admin' ? 'Admin' : 'Employee';
+        roleEl.className = `dropdown-role-badge ${user.role === 'admin' ? 'badge-admin' : 'badge-employee'}`;
+    }
+
+    // Profile fields
+    if (document.getElementById('ess-name')) document.getElementById('ess-name').value = user.name || '';
+    if (document.getElementById('ess-email')) document.getElementById('ess-email').value = user.email || '';
+}
+
+async function updateAdminProfile() {
+    const name = document.getElementById('ess-name').value.trim();
+
+    if (!name) { alert('Name is required.'); return; }
+
+    try {
+        const data = await apiFetch('/users/profile', {
+            method: 'PUT',
+            body: JSON.stringify({ name })
+        });
+        // Update local storage user
+        const user = getCurrentUser();
+        if (user) {
+            const updated = { ...user, name };
+            localStorage.setItem('hrms_current_user', JSON.stringify(updated));
+        }
+        loadAdminProfile();
+        alert('Profile updated successfully!');
+    } catch (err) {
+        alert('Failed to update profile: ' + err.message);
+    }
+}
+
+// ================= USER ACCOUNT MANAGEMENT =================
+let userAccountCache = {};
+
+async function loadUserAccounts() {
+    const tbody = document.getElementById('user-account-table-body');
+    if (!tbody) return;
+
+    try {
+        const users = await apiFetch('/users');
+        userAccountCache = {};
+        (users || []).forEach(u => { userAccountCache[u.id] = u; });
+        const nonAdminUsers = (users || []).filter(u => u.role !== 'admin' && u.email !== 'admin@gmail.com' && u.employee_id !== 'ADMIN001');
+        if (nonAdminUsers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No user accounts found. Create one to get started.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = nonAdminUsers.map(u => `
+            <tr>
+                <td><strong>${escapeHtml(u.name)}</strong></td>
+                <td>${escapeHtml(u.email)}</td>
+                <td>${statusBadge(u.role === 'admin' ? 'Admin' : 'Employee')}</td>
+                <td>${escapeHtml(u.department || '-')}</td>
+                <td>${escapeHtml(u.employee_id || '-')}</td>
+                <td>${escapeHtml(u.position || '-')}</td>
+                <td>${escapeHtml(formatDate(u.created_at))}</td>
+                <td><button class="btn btn-primary btn-sm" onclick="openEditUserModal(${Number(u.id)})">Edit</button></td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state" style="color:#DC2626;">Failed to load user accounts: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+async function deleteUserAccount(id) {
+    if (!confirm('Are you sure you want to delete this user account? This will also remove their associated records. This action cannot be undone.')) return;
+    try {
+        await apiFetch(`/users/${id}`, { method: 'DELETE' });
+        alert('User account deleted successfully.');
+        await loadUserAccounts();
+    } catch (err) {
+        alert('Failed to delete user account: ' + err.message);
+    }
+}
+
+let editingUserId = null;
+
+function openCreateAccountModal() {
+    editingUserId = null;
+    document.getElementById('account-modal-title').innerText = 'Create User Account';
+    document.getElementById('account-save-button').innerText = 'Create Account';
+    document.getElementById('acc-password').placeholder = 'At least 6 characters';
+    document.getElementById('acc-name').value = '';
+    document.getElementById('acc-employee-id').value = '';
+    document.getElementById('acc-email').value = '';
+    document.getElementById('acc-password').value = '';
+    document.getElementById('acc-role').value = 'employee';
+    document.getElementById('acc-department').value = '';
+    document.getElementById('acc-position').value = '';
+    document.getElementById('accountModal').classList.add('show');
+}
+
+function openEditUserModal(id) {
+    const user = userAccountCache[id];
+    if (!user) return;
+    editingUserId = id;
+    document.getElementById('account-modal-title').innerText = 'Edit User Account';
+    document.getElementById('account-save-button').innerText = 'Save Changes';
+    document.getElementById('acc-name').value = user.name || '';
+    document.getElementById('acc-employee-id').value = user.employee_id || '';
+    document.getElementById('acc-email').value = user.email || '';
+    document.getElementById('acc-password').value = '';
+    document.getElementById('acc-password').placeholder = 'Leave blank to keep current password';
+    document.getElementById('acc-role').value = user.role || 'employee';
+    document.getElementById('acc-department').value = user.department || '';
+    document.getElementById('acc-position').value = user.position || '';
+    document.getElementById('accountModal').classList.add('show');
+}
+
+function closeCreateAccountModal() {
+    document.getElementById('accountModal').classList.remove('show');
+}
+
+async function saveUserAccount() {
+    const payload = {
+        name: document.getElementById('acc-name').value.trim(),
+        employee_id: document.getElementById('acc-employee-id').value.trim(),
+        email: document.getElementById('acc-email').value.trim(),
+        password: document.getElementById('acc-password').value,
+        role: document.getElementById('acc-role').value,
+        department: document.getElementById('acc-department').value.trim(),
+        position: document.getElementById('acc-position').value.trim()
+    };
+
+    if (!payload.name || !payload.email || (!editingUserId && !payload.password)) {
+        alert(editingUserId ? 'Name and Email are required.' : 'Name, Email, and Password are required.');
+        return;
+    }
+    if (payload.password && payload.password.length < 6) {
+        alert('Password must be at least 6 characters.');
+        return;
+    }
+
+    try {
+        await apiFetch(editingUserId ? `/users/${editingUserId}` : '/users', {
+            method: editingUserId ? 'PUT' : 'POST',
+            body: JSON.stringify(payload)
+        });
+        alert(editingUserId ? 'User account updated successfully.' : 'User account created successfully! The new user can now log in.');
+        closeCreateAccountModal();
+        await loadUserAccounts();
+        await loadEmployees();
+    } catch (err) {
+        alert('Failed to create account: ' + err.message);
+    }
+}
+
+// ================= EMPLOYEE MANAGEMENT =================
+async function loadEmployees() {
+    const tbody = document.getElementById('employee-table-body');
+    try {
+        const employees = await apiFetch('/employees');
+        const nonAdminEmployees = (employees || []).filter(emp => emp.role !== 'admin' && emp.email !== 'admin@gmail.com' && emp.employee_id !== 'ADMIN001');
+        if (nonAdminEmployees.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No employees found.</td></tr>`;
+            return;
+        }
+tbody.innerHTML = nonAdminEmployees.map(emp => `
+            <tr data-id="${emp.id}"
+                data-empid="${escapeHtml(emp.employee_id)}"
+                data-name="${escapeHtml(emp.name)}"
+                data-email="${escapeHtml(emp.email)}"
+                data-department="${escapeHtml(emp.department || 'General')}"
+                data-role="${escapeHtml(emp.role || '')}"
+                data-status="${escapeHtml(emp.status)}"
+                data-phone="${escapeHtml(emp.phone || '')}"
+                data-address="${escapeHtml(emp.address || '')}"
+                data-dob="${escapeHtml(emp.date_of_birth || '')}"
+                data-gender="${escapeHtml(emp.gender || '')}"
+                data-emergency="${escapeHtml(emp.emergency_contact || '')}"
+                data-age="${escapeHtml(emp.age || '')}"
+                data-placeofbirth="${escapeHtml(emp.place_of_birth || '')}"
+                data-tin="${escapeHtml(emp.tin || '')}"
+                data-civilstatus="${escapeHtml(emp.civil_status || '')}"
+                data-lastname="${escapeHtml(emp.last_name || '')}"
+                data-firstname="${escapeHtml(emp.first_name || '')}"
+                data-middlename="${escapeHtml(emp.middle_name || '')}">
+                <td>${escapeHtml(emp.employee_id)}</td>
+                <td><a href="javascript:void(0)" onclick="viewEmployee(${emp.id})" style="color:var(--primary); font-weight:600; text-decoration:none;">${escapeHtml(emp.name)}</a></td>
+                <td>${escapeHtml(emp.department || 'General')}</td>
+                <td>${escapeHtml(emp.role || '')}</td>
+                <td>${statusBadge(emp.status)}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="openEmployeeModal(${emp.id})">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteEmployee(${emp.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color:#DC2626;">Failed to load employees: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+let editingEmployeeId = null;
+
+function openEmployeeModal(empId) {
+    editingEmployeeId = empId || null;
+    document.getElementById('employeeModalTitle').innerText = empId ? 'Edit Employee' : 'Add Employee';
+    document.getElementById('emp-id').value = '';
+    document.getElementById('emp-name').value = '';
+    document.getElementById('emp-email').value = '';
+    document.getElementById('emp-department').value = '';
+document.getElementById('emp-role').value = '';
+    document.getElementById('emp-status').value = 'Active';
+    document.getElementById('emp-phone').value = '';
+    document.getElementById('emp-gender').value = '';
+    document.getElementById('emp-address').value = '';
+document.getElementById('emp-dob').value = '';
+    document.getElementById('emp-emergency').value = '';
+    document.getElementById('emp-age').value = '';
+    document.getElementById('emp-place-of-birth').value = '';
+    document.getElementById('emp-tin').value = '';
+    document.getElementById('emp-civil-status').value = '';
+    document.getElementById('emp-last-name').value = '';
+    document.getElementById('emp-first-name').value = '';
+    document.getElementById('emp-middle-name').value = '';
+
+    if (empId) {
+        // Prefill from current table data (we keep a cache)
+        const row = document.querySelector(`#employee-table-body tr[data-id="${empId}"]`);
+        if (row) {
+            document.getElementById('emp-id').value = row.dataset.empId || '';
+            document.getElementById('emp-name').value = row.dataset.name || '';
+            document.getElementById('emp-email').value = row.dataset.email || '';
+            document.getElementById('emp-department').value = row.dataset.department || '';
+            document.getElementById('emp-role').value = row.dataset.role || '';
+            document.getElementById('emp-status').value = row.dataset.status || 'Active';
+            document.getElementById('emp-phone').value = row.dataset.phone || '';
+            document.getElementById('emp-gender').value = row.dataset.gender || '';
+            document.getElementById('emp-address').value = row.dataset.address || '';
+            document.getElementById('emp-dob').value = row.dataset.dob || '';
+            document.getElementById('emp-emergency').value = row.dataset.emergency || '';
+            document.getElementById('emp-age').value = row.dataset.age !== undefined ? row.dataset.age : '';
+            calculateEmployeeAge();
+            document.getElementById('emp-place-of-birth').value = row.dataset.placeofbirth || '';
+            document.getElementById('emp-tin').value = row.dataset.tin || '';
+            document.getElementById('emp-civil-status').value = row.dataset.civilstatus || '';
+            document.getElementById('emp-last-name').value = row.dataset.lastname || '';
+            document.getElementById('emp-first-name').value = row.dataset.firstname || '';
+            document.getElementById('emp-middle-name').value = row.dataset.middlename || '';
+        }
+    }
+
+    document.getElementById('employeeModal').classList.add('show');
+}
+
+function closeEmployeeDetail() {
+    document.getElementById('employeeDetailModal').classList.remove('show');
+}
+
+function viewEmployee(empId) {
+    const row = document.querySelector(`#employee-table-body tr[data-id="${empId}"]`);
+    if (!row) return;
+
+    const d = row.dataset;
+    const name = d.name || '-';
+    const position = d.role || '-';
+    const department = d.department || 'General';
+
+    document.getElementById('detail-name').innerText = name;
+    document.getElementById('detail-role-dept').innerText = (position ? `${position} · ` : '') + department;
+    document.getElementById('detail-avatar').innerText = (name !== '-' ? name : 'EM').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    document.getElementById('detail-empid').innerText = d.empId || '-';
+    document.getElementById('detail-email').innerText = d.email || '-';
+    document.getElementById('detail-department').innerText = department;
+    document.getElementById('detail-role').innerText = position;
+    if (document.getElementById('detail-status-pill')) {
+        document.getElementById('detail-status-pill').innerHTML = statusBadge(d.status || 'Active');
+    }
+    document.getElementById('detail-phone').innerText = d.phone || '-';
+    document.getElementById('detail-address').innerText = d.address || '-';
+    document.getElementById('detail-dob').innerText = d.dob ? formatDate(d.dob) : '-';
+    document.getElementById('detail-gender').innerText = d.gender || '-';
+    document.getElementById('detail-emergency').innerText = d.emergency || '-';
+    document.getElementById('detail-lastname').innerText = d.lastname || '-';
+    document.getElementById('detail-firstname').innerText = d.firstname || '-';
+    document.getElementById('detail-middlename').innerText = d.middlename || '-';
+    document.getElementById('detail-age').innerText = (d.age && d.age !== '0') ? d.age : '-';
+    document.getElementById('detail-placeofbirth').innerText = d.placeofbirth || '-';
+    document.getElementById('detail-tin').innerText = d.tin || '-';
+    document.getElementById('detail-civilstatus').innerText = d.civilstatus || '-';
+
+    document.getElementById('employeeDetailModal').classList.add('show');
+}
+
+function closeEmployeeModal() {
+    document.getElementById('employeeModal').classList.remove('show');
+    editingEmployeeId = null;
+}
+
+async function saveEmployee() {
+    const payload = {
+        employee_id: document.getElementById('emp-id').value.trim(),
+        name: document.getElementById('emp-name').value.trim(),
+        email: document.getElementById('emp-email').value.trim(),
+        department: document.getElementById('emp-department').value.trim(),
+        role: document.getElementById('emp-role').value.trim(),
+        status: document.getElementById('emp-status').value,
+        phone: document.getElementById('emp-phone').value.trim(),
+        gender: document.getElementById('emp-gender').value,
+        address: document.getElementById('emp-address').value.trim(),
+        date_of_birth: document.getElementById('emp-dob').value,
+        emergency_contact: document.getElementById('emp-emergency').value.trim(),
+        age: document.getElementById('emp-age').value,
+        place_of_birth: document.getElementById('emp-place-of-birth').value.trim(),
+        tin: document.getElementById('emp-tin').value.trim(),
+        civil_status: document.getElementById('emp-civil-status').value,
+        last_name: document.getElementById('emp-last-name').value.trim(),
+        first_name: document.getElementById('emp-first-name').value.trim(),
+        middle_name: document.getElementById('emp-middle-name').value.trim()
+    };
+
+    if (!payload.employee_id || !payload.name || !payload.email) {
+        alert('Employee ID, Name, and Email are required.');
+        return;
+    }
+
+    try {
+        if (editingEmployeeId) {
+            await apiFetch(`/employees/${editingEmployeeId}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            alert('Employee updated successfully!');
+        } else {
+            await apiFetch('/employees', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            alert('Employee added successfully!');
+        }
+        closeEmployeeModal();
+        await loadEmployees();
+        await loadDashboardStats();
+    } catch (err) {
+        alert('Failed to save employee: ' + err.message);
+    }
+}
+
+async function deleteEmployee(id) {
+    if (!confirm('Delete this employee?')) return;
+    try {
+        await apiFetch(`/employees/${id}`, { method: 'DELETE' });
+        alert('Employee deleted.');
+        await loadEmployees();
+        await loadUserAccounts();
+        await loadDashboardStats();
+    } catch (err) {
+        alert('Failed to delete employee: ' + err.message);
+    }
+}
+
+// ================= APPLICANT MANAGEMENT =================
+async function loadApplicants() {
+    const tbody = document.getElementById('applicant-table-body');
+    try {
+        const applicants = await apiFetch('/applicants');
+        if (!applicants || applicants.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No applicants found.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = applicants.map(app => `
+            <tr>
+                <td><strong>${escapeHtml(app.name)}</strong></td>
+                <td>${escapeHtml(app.position)}</td>
+                <td>${escapeHtml(formatDate(app.applied_date))}</td>
+                <td>${statusBadge(app.status)}</td>
+                <td>
+                    <button class="btn btn-success btn-sm" onclick="hireApplicant(${app.id})">Hire</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteApplicant(${app.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:#DC2626;">Failed to load applicants: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+function calculateAppAge() {
+    const dobStr = document.getElementById('app-dob').value;
+    if (!dobStr) { document.getElementById('app-age').value = ''; return; }
+    const dob = new Date(dobStr);
+    const diffMs = Date.now() - dob.getTime();
+    const ageDate = new Date(diffMs);
+    const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+    document.getElementById('app-age').value = isNaN(age) ? '' : age;
+}
+
+function calculateEmployeeAge() {
+    const dobField = document.getElementById('emp-dob');
+    const ageField = document.getElementById('emp-age');
+    if (!dobField || !ageField || !dobField.value) {
+        if (ageField) ageField.value = '';
+        return;
+    }
+
+    const dob = new Date(`${dobField.value}T00:00:00`);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const birthdayPassed = today.getMonth() > dob.getMonth()
+        || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+    if (!birthdayPassed) age--;
+
+    ageField.value = age >= 0 && age <= 120 ? age : '';
+}
+
+function openApplicantModal() {
+    document.getElementById('app-first-name').value = '';
+    document.getElementById('app-middle-name').value = '';
+    document.getElementById('app-surname').value = '';
+    if (document.getElementById('app-dob')) document.getElementById('app-dob').value = '';
+    if (document.getElementById('app-age')) document.getElementById('app-age').value = '';
+    if (document.getElementById('app-gender')) document.getElementById('app-gender').value = '';
+    if (document.getElementById('app-civil-status')) document.getElementById('app-civil-status').value = '';
+    if (document.getElementById('app-place-of-birth')) document.getElementById('app-place-of-birth').value = '';
+    document.getElementById('app-position').value = '';
+    if (document.getElementById('app-department')) document.getElementById('app-department').value = '';
+    document.getElementById('app-email').value = '';
+    document.getElementById('app-phone').value = '';
+    if (document.getElementById('app-address')) document.getElementById('app-address').value = '';
+    if (document.getElementById('app-tin')) document.getElementById('app-tin').value = '';
+    if (document.getElementById('app-emergency')) document.getElementById('app-emergency').value = '';
+    document.getElementById('app-status').value = 'New';
+    document.getElementById('applicantModal').classList.add('show');
+}
+
+function closeApplicantModal() {
+    document.getElementById('applicantModal').classList.remove('show');
+}
+
+async function saveApplicant() {
+    const surname = document.getElementById('app-surname').value.trim();
+    const middleName = document.getElementById('app-middle-name').value.trim();
+    const firstName = document.getElementById('app-first-name').value.trim();
+    const position = document.getElementById('app-position').value.trim();
+
+    if (!firstName || !surname || !position) {
+        alert('First Name, Surname, and Position are required.');
+        return;
+    }
+
+    const fullName = [firstName, middleName, surname].filter(Boolean).join(' ');
+
+    const payload = {
+        first_name: firstName,
+        middle_name: middleName,
+        surname: surname,
+        name: fullName,
+        position: position,
+        department: document.getElementById('app-department') ? document.getElementById('app-department').value.trim() : 'General',
+        email: document.getElementById('app-email').value.trim(),
+        phone: document.getElementById('app-phone').value.trim(),
+        gender: document.getElementById('app-gender') ? document.getElementById('app-gender').value : '',
+        address: document.getElementById('app-address') ? document.getElementById('app-address').value.trim() : '',
+        date_of_birth: document.getElementById('app-dob') ? document.getElementById('app-dob').value : '',
+        age: document.getElementById('app-age') ? document.getElementById('app-age').value : '',
+        place_of_birth: document.getElementById('app-place-of-birth') ? document.getElementById('app-place-of-birth').value.trim() : '',
+        tin: document.getElementById('app-tin') ? document.getElementById('app-tin').value.trim() : '',
+        civil_status: document.getElementById('app-civil-status') ? document.getElementById('app-civil-status').value : '',
+        emergency_contact: document.getElementById('app-emergency') ? document.getElementById('app-emergency').value.trim() : '',
+        status: document.getElementById('app-status').value
+    };
+
+    try {
+        await apiFetch('/applicants', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        alert('Applicant saved successfully! Details will carry over to Employee Details when hired.');
+        closeApplicantModal();
+        await loadApplicants();
+        await loadDashboardStats();
+    } catch (err) {
+        alert('Failed to add applicant: ' + err.message);
+    }
+}
+
+async function hireApplicant(id) {
+    if (!confirm('Move this applicant to employees? This will also create their portal login and an onboarding checklist.')) return;
+    try {
+        const data = await apiFetch(`/applicants/${id}/hire`, { method: 'POST' });
+        alert(`${data.message}\n\nPortal login:\nEmail: ${data.email || '-'}\nPassword: ${data.default_password || 'changeme123'}\n\nThey can sign in at index.html with these credentials.`);
+        await loadApplicants();
+        await loadEmployees();
+        await loadOnboarding();
+        await loadUserAccounts();
+        await loadDashboardStats();
+    } catch (err) {
+        alert('Failed to hire applicant: ' + err.message);
+    }
+}
+
+async function deleteApplicant(id) {
+    if (!confirm('Delete this applicant?')) return;
+    try {
+        await apiFetch(`/applicants/${id}`, { method: 'DELETE' });
+        alert('Applicant deleted.');
+        await loadApplicants();
+        await loadDashboardStats();
+    } catch (err) {
+        alert('Failed to delete applicant: ' + err.message);
+    }
+}
+
+// ================= ONBOARDING MODULE =================
+async function loadOnboardingEmployees() {
+    try {
+        const employees = await apiFetch('/employees');
+        const startSel = document.getElementById('onb-start-employee');
+        const taskSel = document.getElementById('onb-task-employee');
+        if (!startSel || !taskSel) return;
+
+        const opts = (employees || []).filter(e => e.role !== 'admin' && e.email !== 'admin@gmail.com' && e.employee_id !== 'ADMIN001').map(e =>
+            `<option value="${escapeHtml(e.employee_id)}">${escapeHtml(e.name)} (${escapeHtml(e.employee_id)})</option>`
+        ).join('');
+
+        startSel.innerHTML = '<option value="">Select an employee...</option>' + opts;
+        taskSel.innerHTML = '<option value="">Select an employee...</option>' + opts;
+    } catch (err) {
+        console.error('Failed to load onboarding employees:', err.message);
+    }
+}
+
+function toggleOnboardingCard(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    card.classList.toggle('expanded');
+    const isExpanded = card.classList.contains('expanded');
+    const header = card.querySelector('.onb-card-header');
+    if (header) header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+}
+
+async function loadOnboarding() {
+    const summaryEl = document.getElementById('onboarding-summary');
+    if (!summaryEl) return;
+
+    try {
+        const data = await apiFetch('/onboarding');
+        const summary = data.summary || [];
+        const stats = data.stats || {};
+
+        // Stats cards
+        if (document.getElementById('onb-active-count')) document.getElementById('onb-active-count').innerText = stats.activeOnboardings || summary.length || 0;
+        if (document.getElementById('onb-completed-count')) document.getElementById('onb-completed-count').innerText = stats.completedTasks || 0;
+        if (document.getElementById('onb-avg-progress')) document.getElementById('onb-avg-progress').innerText = (stats.averageProgress || 0) + '%';
+
+        if (!summary || summary.length === 0) {
+            summaryEl.innerHTML = `<div class="empty-state">No onboarding checklists yet. Start one for a new hire above.</div>`;
+            return;
+        }
+
+        // Build per-employee collapsible modern cards
+        summaryEl.innerHTML = summary.map((grp, idx) => {
+            const cardId = `onb-card-${idx}`;
+            const initials = (grp.emp_name || 'E').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+            return `
+                <div class="onboarding-card" id="${cardId}">
+                    <div class="onb-card-header" onclick="toggleOnboardingCard('${cardId}')" role="button" aria-expanded="false">
+                        <div class="onb-user-info">
+                            <div class="onb-avatar">${initials}</div>
+                            <div class="onb-user-details">
+                                <strong>${escapeHtml(grp.emp_name)}</strong>
+                                <div class="onb-meta-tags">
+                                    <span class="onb-tag onb-tag-code"><i class="fa-solid fa-id-badge"></i> ${escapeHtml(grp.emp_code)}</span>
+                                    <span class="onb-tag onb-tag-dept">${escapeHtml(grp.emp_department || 'General')}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="onb-progress-wrapper">
+                            <div class="onb-progress-stats">
+                                <span class="onb-progress-count">${grp.completed_count || 0} of ${grp.task_count || 0} tasks done</span>
+                                <span class="onb-progress-percent">${grp.progress || 0}%</span>
+                            </div>
+                            <div class="onb-progress-bar-bg" title="${grp.progress || 0}% completed">
+                                <div class="onb-progress-fill" style="width:${grp.progress || 0}%;"></div>
+                            </div>
+                            <div class="onb-chevron-badge">
+                                <i class="fa-solid fa-chevron-down onb-chevron"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="onb-card-body">
+                        <table class="onb-task-table">
+                            <thead>
+                                <tr>
+                                    <th>Task Description</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th style="text-align:right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${grp.tasks.map(t => {
+                                    const statusClass = t.status ? t.status.replace(/\s+/g, '-') : 'Pending';
+                                    return `
+                                    <tr class="onb-task-row">
+                                        <td>
+                                            <div class="onb-task-name">
+                                                <i class="fa-solid ${t.status === 'Completed' ? 'fa-circle-check' : 'fa-circle-dot'}"></i>
+                                                <span>${escapeHtml(t.task)}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="onb-due-badge"><i class="fa-solid fa-calendar"></i> ${escapeHtml(formatDate(t.due_date) || 'No due date')}</span>
+                                        </td>
+                                        <td>
+                                            <select class="onb-status-select ${statusClass}" data-status="${escapeHtml(t.status)}" onchange="updateOnboardingTaskStatus(${t.id}, this.value)">
+                                                <option value="Pending" ${t.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                                <option value="In Progress" ${t.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                                <option value="Completed" ${t.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                            </select>
+                                        </td>
+                                        <td style="text-align:right;">
+                                            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteOnboardingTask(${t.id})" style="padding:6px 12px; font-size:12px; border-radius:6px;">
+                                                <i class="fa-solid fa-trash-can"></i> Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        summaryEl.innerHTML = `<div class="empty-state" style="color:#DC2626;">Failed to load onboarding: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+async function startOnboardingChecklist() {
+    const empCode = document.getElementById('onb-start-employee').value;
+    if (!empCode) { alert('Please select an employee first.'); return; }
+
+    try {
+        const data = await apiFetch(`/onboarding/employees/${empCode}/start`, { method: 'POST' });
+        alert(data.message || 'Onboarding checklist started.');
+        await loadOnboarding();
+    } catch (err) {
+        alert('Failed to start onboarding: ' + err.message);
+    }
+}
+
+async function addOnboardingTask() {
+    const sel = document.getElementById('onb-task-employee');
+    const empCode = sel.value;
+    const task = document.getElementById('onb-task-text').value.trim();
+    const due_date = document.getElementById('onb-task-due').value;
+    const status = document.getElementById('onb-task-status').value;
+
+    if (!empCode) { alert('Please select an employee.'); return; }
+    if (!task) { alert('Please enter a task description.'); return; }
+
+    // Find the employee's DB id from the select options (we store employee_id as value)
+    const emp = (await apiFetch('/employees')).find(e => e.employee_id === empCode);
+    if (!emp) { alert('Employee not found.'); return; }
+
+    try {
+        await apiFetch('/onboarding', {
+            method: 'POST',
+            body: JSON.stringify({ employee_id: emp.id, task, due_date, status })
+        });
+        alert('Onboarding task added.');
+        document.getElementById('onb-task-text').value = '';
+        document.getElementById('onb-task-due').value = '';
+        document.getElementById('onb-task-status').value = 'Pending';
+        await loadOnboarding();
+    } catch (err) {
+        alert('Failed to add task: ' + err.message);
+    }
+}
+
+async function updateOnboardingTaskStatus(id, status) {
+    try {
+        await apiFetch(`/onboarding/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status })
+        });
+        await loadOnboarding();
+    } catch (err) {
+        alert('Failed to update task: ' + err.message);
+        await loadOnboarding();
+    }
+}
+
+async function deleteOnboardingTask(id) {
+    if (!confirm('Delete this onboarding task?')) return;
+    try {
+        await apiFetch(`/onboarding/${id}`, { method: 'DELETE' });
+        alert('Onboarding task deleted.');
+        await loadOnboarding();
+    } catch (err) {
+        alert('Failed to delete task: ' + err.message);
+    }
+}
+
+// ================= AUTO-REFRESH =================
+// Checks for new data on a timer and reloads the dashboards automatically.
+const AUTO_REFRESH_INTERVAL = 30000; // 30 seconds
+let autoRefreshTimer = null;
+
+function startAutoRefresh() {
+    if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+    autoRefreshTimer = setInterval(autoRefreshData, AUTO_REFRESH_INTERVAL);
+    console.log(`Auto-refresh enabled (every ${AUTO_REFRESH_INTERVAL / 1000}s)`);
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+    }
+}
+
+async function autoRefreshData() {
+    try {
+        console.log('Auto-refreshing dashboard data...');
+        await Promise.allSettled([
+            loadDashboardStats(),
+            loadUserAccounts(),
+            loadEmployees(),
+            loadApplicants(),
+            loadAdminAnnouncements(),
+            loadOnboarding()
+        ]);
+        console.log('Dashboard data refreshed.');
+    } catch (err) {
+        console.error('Auto-refresh encountered an error:', err.message);
+    }
+}
+
+// ================= ANNOUNCEMENTS MODULE =================
+let editingAnnouncementId = null;
+
+async function loadAdminAnnouncements() {
+    const tbody = document.getElementById('announcement-table-body');
+    if (!tbody) return;
+
+    try {
+        const announcements = await apiFetch('/announcements');
+
+        const user = getCurrentUser();
+        const myName = user ? user.name : '';
+
+        // Update stat cards
+        document.getElementById('ann-total').innerText = announcements ? announcements.length : 0;
+        const mine = announcements ? announcements.filter(a => a.author === myName).length : 0;
+        document.getElementById('ann-mine').innerText = mine;
+
+        if (!announcements || announcements.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="5" style="text-align:center; color:#9CA3AF;">No announcements published yet.</td></tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = announcements.map(a => `
+            <tr>
+                <td><strong>${escapeHtml(a.title)}</strong></td>
+                <td style="max-width:260px; color:#4B5563;">${escapeHtml(a.content)}</td>
+                <td>${escapeHtml(a.author || 'HR')}</td>
+                <td>${escapeHtml(formatDate(a.created_at))}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="editAnnouncement(${a.id})">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = `
+            <tr><td colspan="5" style="text-align:center; color:#DC2626;">Unable to load announcements. Is the backend running on port 5000?</td></tr>
+        `;
+    }
+}
+
+function resetAnnouncementForm() {
+    editingAnnouncementId = null;
+    document.getElementById('ann-title').value = '';
+    document.getElementById('ann-content').value = '';
+    document.getElementById('ann-form-title').innerText = 'Publish Announcement';
+    document.getElementById('ann-cancel-btn').style.display = 'none';
+}
+
+function editAnnouncement(id) {
+    const row = Array.from(document.querySelectorAll('#announcement-table-body tr')).find(tr =>
+        tr.querySelector('button[onclick*="editAnnouncement(' + id + ')"]')
+    );
+    if (!row) {
+        alert('Could not load announcement details. Please refresh and try again.');
+        return;
+    }
+    const cells = row.querySelectorAll('td');
+    editingAnnouncementId = id;
+    document.getElementById('ann-title').value = cells[0].innerText;
+    document.getElementById('ann-content').value = cells[1].innerText;
+    document.getElementById('ann-form-title').innerText = 'Edit Announcement';
+    document.getElementById('ann-cancel-btn').style.display = 'inline-block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function publishAnnouncement(e) {
+    e.preventDefault();
+
+    const title = document.getElementById('ann-title').value.trim();
+    const content = document.getElementById('ann-content').value.trim();
+    if (!title || !content) {
+        alert('Please fill in both title and content.');
+        return;
+    }
+
+    try {
+        if (editingAnnouncementId) {
+            await apiFetch(`/announcements/${editingAnnouncementId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ title, content })
+            });
+            alert('Announcement updated successfully!');
+        } else {
+            await apiFetch('/announcements', {
+                method: 'POST',
+                body: JSON.stringify({ title, content })
+            });
+            alert('Announcement published successfully!');
+        }
+        resetAnnouncementForm();
+        loadAdminAnnouncements();
+    } catch (err) {
+        alert('Failed to save announcement: ' + err.message);
+    }
+}
+
+async function deleteAnnouncement(id) {
+    if (!confirm('Delete this announcement?')) return;
+
+    try {
+        await apiFetch(`/announcements/${id}`, { method: 'DELETE' });
+        alert('Announcement deleted.');
+        if (editingAnnouncementId === id) resetAnnouncementForm();
+        loadAdminAnnouncements();
+    } catch (err) {
+        alert('Failed to delete announcement: ' + err.message);
+    }
+}
+
+// ================= INITIALIZATION =================
+window.onload = function() {
+    protectPage('admin');
+
+    loadAdminProfile();
+    loadDashboardStats();
+    loadUserAccounts();
+    loadEmployees();
+loadApplicants();
+    loadAdminAnnouncements();
+    loadOnboardingEmployees();
+    loadOnboarding();
+
+    startAutoRefresh();
+};
+</script>
+
+<!-- AI Assistant Frontend Controller -->
+<script src="ai-assistant.js"></script>
+
+</body>
+</html>
+
+

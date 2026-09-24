@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Application Portal - HRMS Recruitment</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- FontAwesome for Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins', sans-serif;
+}
+
+:root{
+    --primary:#2F80ED;
+    --secondary:#56CCF2;
+    --accent:#27AE60;
+    --background:#F8FAFC;
+    --card:#FFFFFF;
+    --text:#1F2937;
+    --text-secondary:#6B7280;
+    --border:#EEF2F7;
+    --danger:#EF4444;
+}
+
+body{
+    background:
+    radial-gradient(circle at top right,#56CCF215,transparent 40%),
+    radial-gradient(circle at bottom left,#2F80ED10,transparent 35%),
+    #F8FAFC;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:30px 15px;
+}
+
+.apply-container{
+    width:100%;
+    max-width:760px;
+}
+
+.brand-header{
+    text-align:center;
+    margin-bottom:25px;
+}
+
+.logo-img{
+    width:auto;
+    max-width:140px;
+    height:90px;
+    object-fit:contain;
+    margin-bottom:10px;
+}
+
+.brand-header h1{
+    font-size:24px;
+    color:var(--text);
+    font-weight:700;
+}
+
+.brand-header p{
+    font-size:14px;
+    color:var(--text-secondary);
+    margin-top:4px;
+}
+
+.apply-card{
+    background:var(--card);
+    border-radius:24px;
+    padding:40px;
+    border:1px solid var(--border);
+    box-shadow:
+        0 10px 30px rgba(47,128,237,.08),
+        0 2px 8px rgba(0,0,0,.04);
+}
+
+.section-title{
+    font-size:16px;
+    font-weight:600;
+    color:var(--primary);
+    margin-bottom:15px;
+    padding-bottom:8px;
+    border-bottom:2px solid #EFF6FF;
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:20px;
+    margin-bottom:25px;
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+}
+
+.form-group.full-width{
+    grid-column: span 2;
+}
+
+label{
+    font-size:13px;
+    font-weight:600;
+    color:var(--text);
+    margin-bottom:6px;
+}
+
+label span.required{
+    color:var(--danger);
+}
+
+input, select, textarea{
+    width:100%;
+    padding:12px 14px;
+    border:1px solid #D1D5DB;
+    border-radius:10px;
+    font-size:14px;
+    outline:none;
+    transition:border-color 0.2s, box-shadow 0.2s;
+    background:#F9FAFB;
+}
+
+input:focus, select:focus, textarea:focus{
+    border-color:var(--primary);
+    background:white;
+    box-shadow:0 0 0 3px rgba(47,128,237,0.12);
+}
+
+.btn-submit{
+    width:100%;
+    padding:16px;
+    border:none;
+    border-radius:12px;
+    background:linear-gradient(135deg, #2F80ED 0%, #1D68D8 100%);
+    color:white;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all 0.2s ease;
+    box-shadow:0 8px 20px rgba(47,128,237,0.25);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+}
+
+.btn-submit:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 25px rgba(47,128,237,0.35);
+}
+
+.btn-submit:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+    transform:none;
+}
+
+.alert-box{
+    padding:14px 18px;
+    border-radius:12px;
+    font-size:14px;
+    margin-bottom:20px;
+    display:none;
+}
+
+.alert-success{
+    background:#DEF7EC;
+    color:#03543F;
+    border:1px solid #BCF0DA;
+}
+
+.alert-danger{
+    background:#FEE2E2;
+    color:#991B1B;
+    border:1px solid #FCA5A5;
+}
+
+.success-card{
+    display:none;
+    text-align:center;
+    padding:40px 20px;
+}
+
+.success-icon{
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    background:#DEF7EC;
+    color:#10B981;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:32px;
+    margin-bottom:20px;
+}
+
+@media(max-width:640px){
+    .apply-card{ padding:25px 18px; border-radius:18px; }
+    .form-grid{ grid-template-columns:1fr; gap:15px; }
+    .form-group.full-width{ grid-column: span 1; }
+    input, select, textarea{ font-size:16px; } /* Prevent mobile Safari zoom */
+}
+</style>
+</head>
+<body>
+
+<div class="apply-container">
+
+    <div class="brand-header">
+        <img src="logo.png" alt="HRMS Logo" class="logo-img" onerror="this.style.display='none'">
+        <h1>HR Recruitment Portal</h1>
+        <p>Submit your application details directly to our Recruitment Team.</p>
+    </div>
+
+    <div class="apply-card">
+        
+        <div id="alertBox" class="alert-box"></div>
+
+        <form id="applicantForm" onsubmit="submitApplication(event)">
+            
+            <div class="section-title">
+                <i class="fa-solid fa-briefcase"></i> Position & Department
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Position Applied For <span class="required">*</span></label>
+                    <input type="text" id="position" required placeholder="e.g. Software Engineer, HR Officer, Accountant">
+                </div>
+                <div class="form-group">
+                    <label>Preferred Department</label>
+                    <select id="department">
+                        <option value="General">General / Not Specified</option>
+                        <option value="Human Resources">Human Resources</option>
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="Finance & Accounting">Finance & Accounting</option>
+                        <option value="Marketing & Sales">Marketing & Sales</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Customer Support">Customer Support</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <i class="fa-solid fa-user"></i> Personal Information
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>First Name <span class="required">*</span></label>
+                    <input type="text" id="first_name" required placeholder="First name">
+                </div>
+                <div class="form-group">
+                    <label>Middle Name</label>
+                    <input type="text" id="middle_name" placeholder="Middle name (optional)">
+                </div>
+                <div class="form-group">
+                    <label>Surname / Last Name <span class="required">*</span></label>
+                    <input type="text" id="surname" required placeholder="Surname">
+                </div>
+                <div class="form-group">
+                    <label>Gender</label>
+                    <select id="gender">
+                        <option value="">Select gender...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Email Address <span class="required">*</span></label>
+                    <input type="email" id="email" required placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Phone Number <span class="required">*</span></label>
+                    <input type="tel" id="phone" required placeholder="+63 917 000 0000">
+                </div>
+                <div class="form-group">
+                    <label>Date of Birth</label>
+                    <input type="date" id="date_of_birth" onchange="calculateAge()">
+                </div>
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="number" id="age" placeholder="Age" min="15" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Place of Birth</label>
+                    <input type="text" id="place_of_birth" placeholder="City, Province, Country">
+                </div>
+                <div class="form-group">
+                    <label>Civil Status</label>
+                    <select id="civil_status">
+                        <option value="">Select status...</option>
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Widowed">Widowed</option>
+                        <option value="Separated">Separated</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tax Identification Number (TIN)</label>
+                    <input type="text" id="tin" placeholder="e.g. 000-000-000-000">
+                </div>
+                <div class="form-group full-width">
+                    <label>Home Address</label>
+                    <input type="text" id="address" placeholder="House #, Street, Barangay, City, Province">
+                </div>
+                <div class="form-group full-width">
+                    <label>Emergency Contact (Name & Phone)</label>
+                    <input type="text" id="emergency_contact" placeholder="e.g. Maria Santos (Mother) - 0917-123-4567">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <i class="fa-solid fa-paper-plane"></i> Submit Application to Recruitment Team
+            </button>
+
+        </form>
+
+        <div id="successCard" class="success-card">
+            <div class="success-icon">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h2 style="font-size:22px; color:var(--text); margin-bottom:8px;">Application Submitted!</h2>
+            <p style="color:var(--text-secondary); font-size:14px; max-width:500px; margin:0 auto 25px;">
+                Thank you for applying. Your candidate profile has been successfully transmitted to our Recruitment Team. We will contact you shortly if your qualifications match the position.
+            </p>
+            <button class="btn-submit" style="max-width:250px; margin:0 auto;" onclick="resetForm()">
+                <i class="fa-solid fa-plus"></i> Submit Another Application
+            </button>
+        </div>
+
+    </div>
+
+    <div style="text-align:center; margin-top:20px; color:#9CA3AF; font-size:12px;">
+        Powered by HR Management System (HRMS) Recruitment Module
+    </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+function calculateAge() {
+    const dob = document.getElementById('date_of_birth').value;
+    if (!dob) return;
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    if (age >= 0) {
+        document.getElementById('age').value = age;
+    }
+}
+
+async function submitApplication(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const alertBox = document.getElementById('alertBox');
+    
+    alertBox.style.display = 'none';
+    alertBox.className = 'alert-box';
+
+    const payload = {
+        position: document.getElementById('position').value.trim(),
+        department: document.getElementById('department').value,
+        first_name: document.getElementById('first_name').value.trim(),
+        middle_name: document.getElementById('middle_name').value.trim(),
+        surname: document.getElementById('surname').value.trim(),
+        gender: document.getElementById('gender').value,
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        date_of_birth: document.getElementById('date_of_birth').value,
+        age: document.getElementById('age').value,
+        place_of_birth: document.getElementById('place_of_birth').value.trim(),
+        civil_status: document.getElementById('civil_status').value,
+        tin: document.getElementById('tin').value.trim(),
+        address: document.getElementById('address').value.trim(),
+        emergency_contact: document.getElementById('emergency_contact').value.trim()
+    };
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+
+    try {
+        const baseUrl = (typeof API_BASE !== 'undefined' && API_BASE) 
+            ? API_BASE 
+            : (window.API_BASE || (typeof window.getApiBase === 'function' ? window.getApiBase() : 'http://localhost/hr-folder/api'));
+        
+        const apiUrl = (typeof window.getApiUrl === 'function')
+            ? window.getApiUrl('/applicants')
+            : `${baseUrl}/index.php?route=applicants`;
+        const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Submission failed. PostgreSQL did not save the application.');
+        document.getElementById('applicantForm').style.display = 'none';
+        document.getElementById('successCard').style.display = 'block';
+    } catch (err) {
+        alertBox.innerText = 'Unexpected error: ' + err.message;
+        alertBox.classList.add('alert-danger');
+        alertBox.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Application to Recruitment Team';
+    }
+}
+
+function resetForm() {
+    document.getElementById('applicantForm').reset();
+    document.getElementById('applicantForm').style.display = 'block';
+    document.getElementById('successCard').style.display = 'none';
+    document.getElementById('alertBox').style.display = 'none';
+}
+</script>
+
+</body>
+</html>

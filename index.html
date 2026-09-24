@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - HRMS </title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- FontAwesome for Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+/* ==========================
+   THEME VARIABLES
+========================== */
+:root{
+    --primary:#2F80ED;
+    --secondary:#56CCF2;
+    --accent:#27AE60;
+    --background:#F8FAFC;
+    --card:#FFFFFF;
+    --text:#1F2937;
+    --text-secondary:#6B7280;
+    --border:#EEF2F7;
+    --danger:#EF4444;
+}
+
+body{
+    background:
+    radial-gradient(circle at top right,#56CCF215,transparent 40%),
+    radial-gradient(circle at bottom left,#2F80ED10,transparent 35%),
+    #F8FAFC;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+}
+
+.login-container{
+    width:100%;
+    max-width:450px;
+}
+
+.login-card{
+    background:var(--card);
+    border-radius:24px;
+    padding:40px;
+    border:1px solid var(--border);
+    box-shadow:
+        0 8px 30px rgba(47,128,237,.08),
+        0 2px 8px rgba(0,0,0,.05);
+}
+
+.logo-container{
+    display:flex;
+    justify-content:center;
+    margin-bottom:1px;
+}
+
+.logo-img{
+    width:auto;
+    max-width:150px;
+    height:100px;
+    object-fit:contain;
+}
+
+h1{
+    text-align:center;
+    color:var(--text);
+    margin-bottom:8px;
+    font-size: 24px;
+}
+
+.subtitle{
+    text-align:center;
+    color:var(--text-secondary);
+    margin-bottom:30px;
+    font-size:14px;
+}
+
+.form-group{
+    margin-bottom:20px;
+    position: relative;
+}
+
+label{
+    display:block;
+    margin-bottom:8px;
+    color:var(--text);
+    font-weight:600;
+    font-size:14px;
+}
+
+input{
+    width:100%;
+    padding:15px 18px;
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:#FFFFFF;
+    color:var(--text);
+    font-size:15px;
+    transition:.25s;
+}
+
+input:focus{
+    border-color:var(--primary);
+    box-shadow:0 0 0 4px rgba(47,128,237,.12);
+}
+
+/* Input Wrapper with Icon */
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-wrapper .input-icon {
+    position: absolute;
+    left: 16px;
+    color: #9CA3AF;
+    font-size: 16px;
+    pointer-events: none;
+}
+
+.input-wrapper input {
+    padding-left: 44px;
+}
+
+/* Password Toggle Icon */
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9CA3AF;
+    cursor: pointer;
+}
+
+.options{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+    font-size:14px;
+}
+
+.options a{
+    color:var(--primary);
+    text-decoration:none;
+    font-weight:600;
+}
+
+button{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(135deg,#2F80ED,#56CCF2);
+    color:white;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    transition:.3s;
+}
+
+button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 10px 25px rgba(47,128,237,.30);
+}
+
+button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.divider{
+    text-align:center;
+    margin:25px 0;
+    color:#9CA3AF;
+    position:relative;
+    font-size: 13px;
+}
+
+.divider::before,
+.divider::after{
+    content:"";
+    position:absolute;
+    top:50%;
+    width:40%;
+    height:1px;
+    background:var(--border);
+}
+
+.divider::before{ left:0; }
+.divider::after{ right:0; }
+
+.signup{
+    margin-top:25px;
+    text-align:center;
+    color:var(--text-secondary);
+    font-size: 14px;
+}
+
+.signup a{
+    color:var(--primary);
+    font-weight:600;
+    text-decoration:none;
+}
+
+.error-msg {
+    background: #FEF2F2;
+    color: var(--danger);
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 15px;
+    display: none;
+    text-align: center;
+    border: 1px solid #FECACA;
+}
+
+.error-msg.shake {
+    animation: shake 0.4s ease;
+}
+
+@keyframes fadeIn{
+    from{ opacity:0; transform:translateY(30px); }
+    to{ opacity:1; transform:translateY(0); }
+}
+
+@media(max-width:480px){
+    body{ padding: 12px; }
+    .login-card{ padding:25px 18px; border-radius:18px; }
+    .logo-img{ height: 80px; }
+    input { font-size: 16px !important; }
+}
+</style>
+
+</head>
+<body>
+
+<div class="login-container">
+
+    <div class="login-card">
+
+        <div class="logo-container">
+            <img
+                src="logo.png"
+                alt="HRMS Logo"
+                class="logo-img">
+        </div>
+
+        <h1>Welcome Back</h1>
+        <p class="subtitle">Sign in to access your HR Portal</p>
+
+        <div id="error-message" class="error-msg">
+            Invalid email or password!
+        </div>
+
+        <form id="login-form" onsubmit="return loginUser(event)">
+
+            <div class="form-group">
+                <label>Email Address</label>
+                <div class="input-wrapper">
+                    <i class="fa-regular fa-envelope input-icon"></i>
+                    <input type="email" id="email" placeholder="name@company.com" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-lock input-icon"></i>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                    <i class="fa-solid fa-eye password-toggle" onclick="togglePassword()"></i>
+                </div>
+            </div>
+
+            <button type="submit" id="loginBtn">
+                <span>Sign In</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+
+        </form>
+
+        <div id="forgot-link" style="text-align:right; margin-top:14px; font-size:13px;">
+            <a href="#" onclick="showRecovery(event)" style="color:var(--primary); text-decoration:none; font-weight:600;">Forgot Password?</a>
+        </div>
+
+        <div id="recovery-panel" style="display:none;">
+            <h1 id="recovery-title">Forgot Password</h1>
+            <p id="recovery-subtitle" class="subtitle" style="margin-bottom:20px;">Enter your registered email to receive a verification code.</p>
+            <div id="recovery-error" class="error-msg"></div>
+
+            <form id="forgot-form" onsubmit="requestPasswordReset(event)">
+                <div class="form-group">
+                    <label for="recovery-email">Registered Email Address</label>
+                    <input type="email" id="recovery-email" placeholder="name@company.com" required>
+                </div>
+                <button type="submit" id="forgot-btn">Send Verification Code</button>
+            </form>
+
+            <form id="otp-form" style="display:none;" onsubmit="verifyPasswordOtp(event)">
+                <div class="form-group">
+                    <label for="recovery-otp">6-Digit Verification Code</label>
+                    <input type="text" id="recovery-otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+                </div>
+                <button type="submit" id="otp-btn">Verify Code</button>
+                <button type="button" id="resend-btn" onclick="resendPasswordOtp()" style="margin-top:10px; background:#64748B;">Resend Code</button>
+            </form>
+
+            <form id="reset-form" style="display:none;" onsubmit="resetPassword(event)">
+                <div class="form-group">
+                    <label for="new-password">New Password</label>
+                    <input type="password" id="new-password" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm New Password</label>
+                    <input type="password" id="confirm-password" minlength="6" required>
+                </div>
+                <button type="submit" id="reset-btn">Reset Password</button>
+            </form>
+
+            <div style="text-align:center; margin-top:18px; font-size:13px;">
+                <a href="#" onclick="showLogin(event)" style="color:var(--primary); text-decoration:none; font-weight:600;">Back to Login</a>
+            </div>
+        </div>
+
+        <div class="signup" style="margin-top:20px; padding-top:15px; border-top:1px solid #EEF2F7; text-align:center;">
+            Applying for a position? <a href="apply.html" style="color:var(--primary); font-weight:600;"><i class="fa-solid fa-file-signature"></i> Submit Application Form</a>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+// Toggle Password Visibility
+function togglePassword() {
+    const passwordInput = document.getElementById("password");
+    const icon = document.querySelector(".password-toggle");
+    
+    if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+    } else {
+        passwordInput.type = "password";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+    }
+}
+
+function loginUser(event) {
+    event.preventDefault();
+    document.getElementById("error-message").style.display = "none";
+
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const btn = document.getElementById("loginBtn");
+
+    // Show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Signing in...';
+
+    loginWithBackend(email, password)
+        .then(user => {
+            // Redirect based on role
+            if (user.role === "admin") {
+                window.location.href = "dashboard.html";
+            } else {
+                window.location.href = "user-dashboard.html";
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Sign In</span><i class="fa-solid fa-arrow-right"></i>';
+            showError(err.message || "Invalid email or password! Try again.");
+        });
+
+    return false;
+}
+
+function showError(message) {
+    const error = document.getElementById("error-message");
+    error.textContent = message;
+    error.style.display = "block";
+    error.classList.add("shake");
+    setTimeout(() => error.classList.remove("shake"), 500);
+}
+
+let recoveryEmail = '';
+let recoveryResetToken = '';
+
+function showRecovery(event) {
+    event.preventDefault();
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('forgot-link').style.display = 'none';
+    document.querySelector('.signup').style.display = 'none';
+    document.getElementById('recovery-panel').style.display = 'block';
+    showRecoveryStep('forgot');
+}
+
+function showLogin(event) {
+    event.preventDefault();
+    recoveryEmail = '';
+    recoveryResetToken = '';
+    document.getElementById('recovery-panel').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('forgot-link').style.display = 'block';
+    document.querySelector('.signup').style.display = 'block';
+    clearRecoveryError();
+}
+
+function showRecoveryStep(step) {
+    document.getElementById('forgot-form').style.display = step === 'forgot' ? 'block' : 'none';
+    document.getElementById('otp-form').style.display = step === 'otp' ? 'block' : 'none';
+    document.getElementById('reset-form').style.display = step === 'reset' ? 'block' : 'none';
+    const titles = {
+        forgot: ['Forgot Password', 'Enter your registered email to receive a verification code.'],
+        otp: ['Verify Your Email', 'Enter the six-digit code sent to your registered email.'],
+        reset: ['Create New Password', 'Choose a new password for your account.']
+    };
+    document.getElementById('recovery-title').textContent = titles[step][0];
+    document.getElementById('recovery-subtitle').textContent = titles[step][1];
+    clearRecoveryError();
+}
+
+function clearRecoveryError() {
+    const error = document.getElementById('recovery-error');
+    error.textContent = '';
+    error.style.display = 'none';
+}
+
+function showRecoveryError(message) {
+    const error = document.getElementById('recovery-error');
+    error.textContent = message;
+    error.style.display = 'block';
+}
+
+async function recoveryRequest(route, body) {
+    const response = await fetch(window.getApiUrl(route), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Password recovery request failed.');
+    return data;
+}
+
+async function requestPasswordReset(event) {
+    event.preventDefault();
+    recoveryEmail = document.getElementById('recovery-email').value.trim().toLowerCase();
+    const button = document.getElementById('forgot-btn');
+    button.disabled = true;
+    clearRecoveryError();
+    try {
+        const data = await recoveryRequest('/auth/forgot-password', { email: recoveryEmail });
+        document.getElementById('recovery-subtitle').textContent = data.message;
+        showRecoveryStep('otp');
+    } catch (error) {
+        showRecoveryError(error.message);
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function resendPasswordOtp() {
+    const button = document.getElementById('resend-btn');
+    button.disabled = true;
+    clearRecoveryError();
+    try {
+        const data = await recoveryRequest('/auth/resend-otp', { email: recoveryEmail });
+        document.getElementById('recovery-subtitle').textContent = data.message;
+    } catch (error) {
+        showRecoveryError(error.message);
+    } finally {
+        window.setTimeout(() => { button.disabled = false; }, 1000);
+    }
+}
+
+async function verifyPasswordOtp(event) {
+    event.preventDefault();
+    const button = document.getElementById('otp-btn');
+    button.disabled = true;
+    clearRecoveryError();
+    try {
+        const data = await recoveryRequest('/auth/verify-otp', {
+            email: recoveryEmail,
+            otp: document.getElementById('recovery-otp').value.trim()
+        });
+        recoveryResetToken = data.reset_token;
+        showRecoveryStep('reset');
+    } catch (error) {
+        showRecoveryError(error.message);
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function resetPassword(event) {
+    event.preventDefault();
+    const button = document.getElementById('reset-btn');
+    button.disabled = true;
+    clearRecoveryError();
+    try {
+        await recoveryRequest('/auth/reset-password', {
+            reset_token: recoveryResetToken,
+            new_password: document.getElementById('new-password').value,
+            confirm_password: document.getElementById('confirm-password').value
+        });
+        alert('Password reset successfully. Please sign in with your new password.');
+        window.location.href = 'index.html';
+    } catch (error) {
+        showRecoveryError(error.message);
+    } finally {
+        button.disabled = false;
+    }
+}
+
+// Add shake animation dynamically
+const styleSheet = document.createElement("style");
+styleSheet.innerText = `
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+  75% { transform: translateX(-10px); }
+  100% { transform: translateX(0); }
+}`;
+document.head.appendChild(styleSheet);
+</script>
+
+</body>
+</html>

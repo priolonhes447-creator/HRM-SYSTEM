@@ -1,0 +1,25 @@
+# Disable Directory Browsing
+Options -Indexes
+
+# Block Web Access to Sensitive Files (.env, .git, .sql, .db, .log, etc.)
+<FilesMatch "^\.env|\.git|\.gitignore|.*\.sql$|.*\.db$|.*\.log$|README\.md|TODO\.md$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Handle Authorization Header in XAMPP / FastCGI
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Route every API path to the PHP PostgreSQL API, including nested paths.
+    RewriteRule ^api/(.*)$ api/index.php?route=$1 [QSA,L]
+</IfModule>

@@ -1,0 +1,19 @@
+{
+  "name": "hrms-backend",
+  "version": "1.0.0",
+  "description": "HRMS Pro Backend API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node test-api.js && node test-announcements.js && node test-interconnect.js && node test-onboarding.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^13.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

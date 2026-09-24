@@ -1,0 +1,27 @@
+# Netlify Deployment Configuration for HRMS Project
+
+[build]
+  publish = "."
+
+# Production API Routing Options:
+# Option 1: Proxying to a separately hosted Node.js HTTPS backend (e.g., Render, Railway, AWS)
+# Uncomment and update the 'to' URL below:
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://your-backend-app.onrender.com/api/:splat"
+#   status = 200
+#   force = true
+
+# Option 2: Serverless API handlers with Netlify Functions
+# If converting API endpoints to Netlify Functions under netlify/functions/:
+# [[redirects]]
+#   from = "/api/*"
+#   to = "/.netlify/functions/:splat"
+#   status = 200
+
+# Fallback SPA / HTML rewrite rule
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false

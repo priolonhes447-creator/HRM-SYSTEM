@@ -32,21 +32,6 @@ $route = trim($route, '/');
 // Decode JSON input body for POST/PUT requests
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
-$pdo->exec(
-    "CREATE TABLE IF NOT EXISTS password_resets (
-        id BIGSERIAL PRIMARY KEY,
-        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        otp_hash VARCHAR(255) NOT NULL,
-        reset_token_hash VARCHAR(255),
-        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-        attempts INT NOT NULL DEFAULT 0,
-        verified_at TIMESTAMP WITH TIME ZONE,
-        used_at TIMESTAMP WITH TIME ZONE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    )"
-);
-$pdo->exec("CREATE INDEX IF NOT EXISTS password_resets_user_idx ON password_resets(user_id, created_at DESC)");
-
 if ($route === 'health' && $requestMethod === 'GET') {
     respondJSON(['status' => 'ok', 'database' => 'postgresql']);
 }
@@ -188,7 +173,7 @@ try {
             'employee_id' => $user['employee_id'] ?? ''
         ];
 
-        $token = PHPJWT::encode($payload, JWT_SECRET);
+        $token = PHPJWT::encode($payload, getJwtSecret(), JWT_EXPIRES_IN);
 
         respondJSON([
             'token' => $token,
@@ -1277,6 +1262,10 @@ try {
     // Fallback if route not matched
     respondError("API Endpoint not found: [{$requestMethod}] /{$route}", 404);
 
-} catch (Exception $e) {
-    respondError("Internal Server Error: " . $e->getMessage(), 500);
+} catch (Throwable $e) {
+    error_log('HRMS API error: ' . $e->getMessage());
+    $message = APP_ENV === 'development'
+        ? 'Internal Server Error: ' . $e->getMessage()
+        : 'Internal Server Error.';
+    respondError($message, 500);
 }

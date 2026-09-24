@@ -1,91 +1,113 @@
 # HRMS - Human Resource Management System
 
-A production-ready, full-featured Human Resource Management System featuring a modern **Vanilla CSS/JS** frontend, **PHP (PostgreSQL)** REST API, **JWT Authentication**, interactive **AI Assistant**, and automated test suites.
+HRMS is a vanilla HTML/CSS/JavaScript frontend with a PHP 8 and PostgreSQL API. The production runtime is the PHP API in `api/`. The Node.js/SQLite implementation under `backend/` is retained only for legacy local tests and is blocked from public web access.
 
+## Requirements
 
-## 🏗️ Technical Architecture & Stack
+- PHP 8.0-8.2
+- PostgreSQL 14 or 15
+- PHP extensions: PDO, `pdo_pgsql`, ctype, filter, hash, and OpenSSL
+- Composer 2
+- Apache or LiteSpeed with `.htaccess` support
+- HTTPS in production
 
+## Local setup
 
+1. Copy `.env.example` to `.env`.
+2. Set the PostgreSQL credentials and generate a unique JWT secret:
 
-## 🚀 Quick Setup & Deployment Guide
-
-1. Create the PostgreSQL database and run [`supabase.sql.sql`](supabase.sql.sql) for a new installation. For an existing database, run [`database-migrations.sql`](database-migrations.sql) instead.
-2. Copy [.env.example](.env.example) to the server-side `.env` file and set `DB_*`, `JWT_SECRET`, and SMTP values.
-3. From the project root, install PHP dependencies:
    ```bash
-   composer install --no-dev --optimize-autoloader
+   php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
    ```
-4. Upload the project to the PHP document root, including `vendor/`, or run Composer on the host.
-5. Ensure PHP has `pdo_pgsql`, `openssl`, and `zip` enabled, then start Apache.
-6. Open `http://localhost/hr-folder/index.html` locally or the Hostforge domain after deployment.
 
+3. For a brand-new database, review and run `supabase.sql.sql`. This script resets the HRMS tables and loads demo data, so never run it over production data.
+4. For an existing installation, run `database-migrations.sql` instead.
+5. Install PHP dependencies:
 
-## 🔑 Demo Credentials
+   ```bash
+   composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+   ```
 
-| Role | Email | Password | Access Portal |
-| :--- | :--- | :--- | :--- |
+6. Serve the project through Apache/LiteSpeed and open `index.html`.
 
-## Password Recovery Email Setup
+## HostForge deployment
 
-Password recovery uses PHPMailer and Gmail SMTP. From the project root, install dependencies with `composer install`. Copy the SMTP variables from `.env.example` into the server-side `.env` file, then set `MAIL_USERNAME` and `MAIL_FROM_ADDRESS` to the system sender Gmail address and `MAIL_PASSWORD` to a Google App Password. Never place this password in frontend files.
+Use a HostForge Developer Hosting plan with PHP 8.2 and PostgreSQL enabled.
 
-The API creates the `password_resets` PostgreSQL table automatically if it is missing; the full definition is also included in `supabase.sql.sql`.
+1. Create a PostgreSQL database and user in cPanel. Grant the user access to the database.
+2. Deploy the Git repository into the domain's document root. Do not upload a local `.env`, database dump, or `hostforge.env` file.
+3. SSH into the release directory and install dependencies:
 
+   ```bash
+   composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+   composer check-platform-reqs --no-dev
+   ```
 
-## 🧪 Automated Testing
+4. Create `.env` directly on HostForge from `.env.example`. At minimum configure:
 
-Run the automated test suite verifying all 71 endpoint, authentication, announcement, onboarding, and pipeline tests:
+   ```dotenv
+   APP_ENV=production
+   DB_HOST=127.0.0.1
+   DB_PORT=5432
+   DB_NAME=cpanel_database_name
+   DB_USER=cpanel_database_user
+   DB_PASS=replace_with_database_password
+   DB_SSLMODE=prefer
+   JWT_SECRET=replace_with_a_random_64_character_secret
+   JWT_EXPIRES_IN=86400
+   CORS_ALLOWED_ORIGIN=https://your-domain.example
+   ```
 
-```bash
-cd backend
-npm test
-```
+5. Add SMTP settings if password recovery is enabled. Use a newly generated provider app password; never commit it.
+6. Import the schema using cPanel/phpPgAdmin or `psql`. The included `supabase.sql.sql` is destructive and includes demo accounts, so it is suitable only for a new database.
+7. Replace or remove the demo accounts immediately after the initial import.
+8. Enable the HostForge SSL certificate and force HTTPS in cPanel.
+9. Verify `https://your-domain.example/api/health`, then test login, application submission, password reset, and authenticated operations.
 
+The `.htaccess` file blocks access to environment files, SQL files, Composer metadata, the legacy backend, dependencies, logs, and repository metadata. Keep `AllowOverride` enabled so these protections and API rewrite rules take effect.
 
-## 🛠️ Publishing to GitHub
+## Environment variables
 
-```bash
-# 1. Initialize repository
-git init
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `APP_ENV` | Yes | Use `production` on HostForge. |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | Yes | PostgreSQL connection. |
+| `DB_SSLMODE` | No | Defaults to `prefer`; use the value required by the database provider. |
+| `JWT_SECRET` | Yes | Random secret of at least 32 characters. The API rejects missing or known default secrets. |
+| `JWT_EXPIRES_IN` | No | Token lifetime in seconds; defaults to 86400. |
+| `CORS_ALLOWED_ORIGIN` | No | Exact permitted cross-origin URL. Same-origin deployments may leave this blank. |
+| `MAIL_*` | For password reset | SMTP host, port, username, password, encryption, and sender details. |
 
-# 2. Stage files (ignoring runtime databases & logs)
-git add .
+## Database changes
 
-# 3. Create initial commit
-git commit -m "feat: Production publication release of HRMS System"
+Database tables are never created during normal web requests. Apply schema changes explicitly before deploying code:
 
-# 4. Push to remote repository
-git remote add origin https://github.com/YOUR_USERNAME/hr-folder.git
-git branch -M main
-git push -u origin main
-```
+- New disposable installation: `supabase.sql.sql`
+- Existing database: `database-migrations.sql`
 
+Back up the production database before running any migration.
 
-## 📁 Repository Structure
+## Security notes
 
-```
-hr-folder/
-├── api/                    # PHP REST API (Config, Router, JWT)
-├── backend/                # Node.js Express REST API & SQLite DB
-│   ├── ai.js               # AI Assistant handler
-│   ├── database.js         # SQLite database operations & schema
-│   ├── server.js           # Express API server entry point
-│   ├── test-api.js         # Core API test suite
-│   ├── test-announcements.js # Announcements test suite
-│   ├── test-interconnect.js  # Interconnectivity test suite
-│   └── test-onboarding.js  # Onboarding workflow test suite
-├── .env.example            # Environment template for PHP/Supabase
-├── .gitignore              # Git ignore rules for node_modules, logs & databases
-├── .htaccess               # Apache URL rewrite rules for XAMPP
-├── logo.png                # HRMS application logo asset
-├── index.html              # Login & Authentication Page
-├── dashboard.html          # HR Manager Command Center
-├── user-dashboard.html     # Employee Self-Service Portal
-├── config.js               # Frontend API URL configuration
-├── auth.js                 # JS authentication & fetch API client
-├── ai-assistant.js         # Dynamic AI assistant UI client
-├── ai-assistant.css        # AI assistant styles
-├── netlify.toml            # Netlify deployment configuration
-├── _redirects              # Netlify SPA routing rules
-└── supabase_schema.sql     # Supabase PostgreSQL DDL & seed script
+- Local `.env*` files are ignored except for `.env.example`.
+- Never commit SMTP app passwords, database passwords, JWT secrets, SQL exports, or employee data.
+- Production errors are logged server-side and return a generic response to clients.
+- CORS is no longer open to every origin.
+- Rotate any credential that has previously been stored in plaintext or shared.
+
+## Repository layout
+
+```text
+api/                     Production PHP/PostgreSQL REST API
+backend/                 Legacy Node.js/SQLite implementation and tests
+index.html               Login and password recovery
+dashboard.html           HR administrator portal
+user-dashboard.html      Employee self-service portal
+apply.html               Public application form
+config.js                Browser API URL resolution
+auth.js                  Browser authentication client
+supabase.sql.sql          Destructive fresh-install schema with demo data
+database-migrations.sql  Non-destructive migration for existing databases
+.env.example             Production environment template
+.htaccess                LiteSpeed/Apache protection and API routing
 ```

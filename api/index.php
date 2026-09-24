@@ -9,6 +9,7 @@ require_once __DIR__ . '/jwt.php';
 try {
     $pdo = getDBConnection();
 } catch (Throwable $e) {
+    error_log('HRMS PostgreSQL connection failed: ' . $e->getMessage());
     respondError('PostgreSQL connection failed. No data was saved.', 503);
 }
 $requestMethod = $_SERVER['REQUEST_METHOD'];

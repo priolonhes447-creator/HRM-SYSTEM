@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.production
+hostforge.env
 
 # Dependencies & Node artifacts
 node_modules/
@@ -13,6 +14,7 @@ composer-setup.php
 # XAMPP / Apache temporary files & logs & SQLite databases
 *.log
 latest.sql
+latest1.sql
 backend/*.log
 backend/server.log
 backend/server.stderr.log

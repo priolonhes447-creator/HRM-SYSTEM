@@ -23,7 +23,11 @@ if ($blockedDirectory || $blockedFile) {
 
 // Send all API paths through the PHP API controller without relying on rewrites.
 if ($requestPath === '/api' || str_starts_with($requestPath, '/api/')) {
-    $_GET['route'] = trim(substr($requestPath, 4), '/');
+    // The browser client uses /api/index.php?route=..., so preserve that query.
+    // Clean paths such as /api/auth/login are also supported.
+    if ($requestPath !== '/api/index.php' || empty($_GET['route'])) {
+        $_GET['route'] = trim(substr($requestPath, 4), '/');
+    }
     require __DIR__ . '/api/index.php';
     exit;
 }

@@ -9,6 +9,7 @@ HRMS is a vanilla HTML/CSS/JavaScript frontend with a PHP 8 and PostgreSQL API. 
 - PHP extensions: PDO, `pdo_pgsql`, ctype, filter, hash, and OpenSSL
 - Composer 2
 - Apache or LiteSpeed with `.htaccess` support
+- For container deployment: PHP built-in server using `router.php`
 - HTTPS in production
 
 ## Local setup
@@ -64,6 +65,14 @@ Use a HostForge Developer Hosting plan with PHP 8.2 and PostgreSQL enabled.
 8. Enable the HostForge SSL certificate and force HTTPS in cPanel.
 9. Verify `https://your-domain.example/api/health`, then test login, application submission, password reset, and authenticated operations.
 
+For HostForge's container deployment screen, use the repository root and this start command:
+
+```bash
+php -S 0.0.0.0:$PORT router.php
+```
+
+The router protects private files and forwards `/api/*` requests to the PHP controller because PHP's built-in server does not process `.htaccess` files.
+
 The `.htaccess` file blocks access to environment files, SQL files, Composer metadata, the legacy backend, dependencies, logs, and repository metadata. Keep `AllowOverride` enabled so these protections and API rewrite rules take effect.
 
 ## Environment variables
@@ -110,4 +119,5 @@ supabase.sql.sql          Destructive fresh-install schema with demo data
 database-migrations.sql  Non-destructive migration for existing databases
 .env.example             Production environment template
 .htaccess                LiteSpeed/Apache protection and API routing
+router.php               Container server protection and API routing
 ```

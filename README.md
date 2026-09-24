@@ -24,8 +24,6 @@ A production-ready, full-featured Human Resource Management System featuring a m
 
 | Role | Email | Password | Access Portal |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `admin@gmail.com` | `admin123` | [dashboard.html](dashboard.html) (HR Command Center) |
-| **Employee** | `user@gmail.com` | `user123` | [user-dashboard.html](user-dashboard.html) (Employee Portal) |
 
 ## Password Recovery Email Setup
 

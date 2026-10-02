@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login - HRMS </title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <!-- FontAwesome for Icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -243,6 +243,77 @@ button:disabled {
     .logo-img{ height: 80px; }
     input { font-size: 16px !important; }
 }
+
+* { font-family: 'DM Sans', sans-serif; }
+
+:root {
+    --primary: #087E78;
+    --secondary: #D87350;
+    --accent: #378866;
+    --background: #F3F7F5;
+    --text: #1D302E;
+    --text-secondary: #637572;
+    --border: #DCE7E3;
+}
+
+body {
+    background-color: var(--background);
+    background-image: linear-gradient(rgba(8,126,120,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(8,126,120,.035) 1px, transparent 1px);
+    background-size: 32px 32px;
+}
+
+.login-container { max-width: 460px; animation: fadeIn .45s ease both; }
+
+.login-card {
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--primary);
+    border-radius: 8px;
+    box-shadow: 0 18px 46px rgba(29,48,46,.09), 0 2px 8px rgba(29,48,46,.04);
+}
+
+.logo-container { margin-bottom: 8px; }
+.logo-img { max-width: 132px; height: 88px; }
+h1 { font-family: 'Manrope', sans-serif; font-weight: 800; }
+.subtitle { line-height: 1.55; }
+
+input {
+    min-height: 50px;
+    border-color: #C9D6D2;
+    border-radius: 5px;
+    background: #FBFCFC;
+    font-family: inherit;
+}
+
+input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(8,126,120,.12); }
+
+button {
+    min-height: 48px;
+    border-radius: 5px;
+    background: var(--primary);
+    font-family: inherit;
+    transition: background-color .18s ease, box-shadow .18s ease;
+}
+
+button:hover {
+    background: #075E59;
+    transform: none;
+    box-shadow: 0 5px 14px rgba(8,126,120,.2);
+}
+
+button:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 3px solid rgba(8,126,120,.35);
+    outline-offset: 2px;
+}
+
+.error-msg { border-radius: 5px; }
+
+@media (max-width: 480px) {
+    .login-card { border-radius: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
 </style>
 
 </head>
@@ -254,8 +325,8 @@ button:disabled {
 
         <div class="logo-container">
             <img
-                src="logo.png"
-                alt="HRMS Logo"
+                src="toursphere-logo.png"
+                alt="Toursphere Travel &amp; Tours"
                 class="logo-img">
         </div>
 

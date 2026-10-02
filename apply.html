@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Job Application Portal - HRMS Recruitment</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <!-- FontAwesome for Icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -14,19 +14,20 @@
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:'Poppins', sans-serif;
+    font-family:'DM Sans', sans-serif;
 }
 
 :root{
-    --primary:#2F80ED;
-    --secondary:#56CCF2;
-    --accent:#27AE60;
-    --background:#F8FAFC;
+    --primary:#087E78;
+    --primary-dark:#075E59;
+    --secondary:#D87350;
+    --accent:#378866;
+    --background:#F3F7F5;
     --card:#FFFFFF;
-    --text:#1F2937;
-    --text-secondary:#6B7280;
-    --border:#EEF2F7;
-    --danger:#EF4444;
+    --text:#1D302E;
+    --text-secondary:#637572;
+    --border:#DCE7E3;
+    --danger:#B93A3A;
 }
 
 body{
@@ -211,6 +212,34 @@ input:focus, select:focus, textarea:focus{
     .form-group.full-width{ grid-column: span 1; }
     input, select, textarea{ font-size:16px; } /* Prevent mobile Safari zoom */
 }
+
+body{padding:42px 20px 28px;background-color:var(--background);background-image:linear-gradient(rgba(8,126,120,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(8,126,120,.035) 1px,transparent 1px);background-size:32px 32px}
+.apply-container{max-width:880px;animation:portalEnter .45s ease both}
+.brand-header{display:flex;align-items:center;justify-content:center;gap:16px;text-align:left}
+.logo-img{max-width:90px;height:70px;margin:0}
+.brand-header h1,.section-title{font-family:'Manrope',sans-serif}
+.brand-header h1{font-weight:800}
+.apply-card{padding:34px 38px;border-radius:8px;box-shadow:0 12px 34px rgba(29,48,46,.07)}
+.section-title{margin:8px 0 17px;padding-bottom:10px;border-bottom:1px solid var(--border);color:var(--text);font-size:14px;font-weight:800}
+.section-title i{color:var(--primary)}
+.form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 20px;margin-bottom:28px}
+.form-grid>.full-width{grid-column:span 2}
+label{font-weight:700;margin-bottom:7px}
+input,select,textarea{min-height:46px;padding:11px 13px;border:1px solid #C9D6D2;border-radius:5px;background:#FBFCFC;color:var(--text);font-family:inherit;transition:border-color .18s,box-shadow .18s,background .18s}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(8,126,120,.12)}
+.requirement-note{display:flex;gap:13px;align-items:flex-start;padding:15px 16px;margin-bottom:17px;border:1px solid #C5DFD8;border-left:3px solid var(--primary);background:#F2F8F5}
+.requirement-note i{margin-top:2px;color:var(--primary)}
+.requirement-note strong{display:block;margin-bottom:3px;color:var(--text);font-size:13px}
+.requirement-note p,.field-hint{color:var(--text-secondary);font-size:12px;line-height:1.5}
+.upload-control{min-height:58px;padding:10px}
+.upload-name{margin-top:7px;color:var(--text-secondary);font-size:12px}
+.btn-submit{min-height:52px;padding:14px 18px;border-radius:5px;background:var(--primary);box-shadow:none;font-size:15px;font-weight:700;transition:background .18s,transform .18s}
+.btn-submit:hover{transform:translateY(-1px);background:var(--primary-dark);box-shadow:none}
+.alert-box,.success-icon{border-radius:5px}
+.success-icon{background:#E4F3ED;color:var(--primary)}
+@keyframes portalEnter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:640px){body{padding:24px 12px 18px}.brand-header{gap:12px}.brand-header h1{font-size:20px}.brand-header p{font-size:13px}.logo-img{max-width:66px;height:54px}.apply-card{padding:24px 18px;border-radius:6px}.form-grid>.full-width{grid-column:span 1}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
@@ -219,8 +248,10 @@ input:focus, select:focus, textarea:focus{
 
     <div class="brand-header">
         <img src="logo.png" alt="HRMS Logo" class="logo-img" onerror="this.style.display='none'">
-        <h1>HR Recruitment Portal</h1>
-        <p>Submit your application details directly to our Recruitment Team.</p>
+        <div>
+            <h1>HR Recruitment Portal</h1>
+            <p>Candidate application</p>
+        </div>
     </div>
 
     <div class="apply-card">
@@ -230,23 +261,17 @@ input:focus, select:focus, textarea:focus{
         <form id="applicantForm" onsubmit="submitApplication(event)">
             
             <div class="section-title">
-                <i class="fa-solid fa-briefcase"></i> Position & Department
+                <i class="fa-solid fa-briefcase"></i> Position Details
             </div>
             <div class="form-grid">
-                <div class="form-group">
-                    <label>Position Applied For <span class="required">*</span></label>
-                    <input type="text" id="position" required placeholder="e.g. Software Engineer, HR Officer, Accountant">
-                </div>
-                <div class="form-group">
-                    <label>Preferred Department</label>
-                    <select id="department">
-                        <option value="General">General / Not Specified</option>
-                        <option value="Human Resources">Human Resources</option>
-                        <option value="Information Technology">Information Technology</option>
-                        <option value="Finance & Accounting">Finance & Accounting</option>
-                        <option value="Marketing & Sales">Marketing & Sales</option>
-                        <option value="Operations">Operations</option>
-                        <option value="Customer Support">Customer Support</option>
+                <div class="form-group full-width">
+                    <label for="position">Position Applied For</label>
+                    <select id="position" name="position">
+                        <option value="">Select a position (optional)...</option>
+                        <option value="Driver">Driver</option>
+                        <option value="Staff">Staff</option>
+                        <option value="Cashier">Cashier</option>
+                        <option value="Team Leader">Team Leader</option>
                     </select>
                 </div>
             </div>
@@ -257,48 +282,47 @@ input:focus, select:focus, textarea:focus{
             <div class="form-grid">
                 <div class="form-group">
                     <label>First Name <span class="required">*</span></label>
-                    <input type="text" id="first_name" required placeholder="First name">
+                    <input type="text" id="first_name" name="first_name" required autocapitalize="words" placeholder="First name">
                 </div>
                 <div class="form-group">
                     <label>Middle Name</label>
-                    <input type="text" id="middle_name" placeholder="Middle name (optional)">
+                    <input type="text" id="middle_name" name="middle_name" autocapitalize="words" placeholder="Middle name (optional)">
                 </div>
                 <div class="form-group">
                     <label>Surname / Last Name <span class="required">*</span></label>
-                    <input type="text" id="surname" required placeholder="Surname">
+                    <input type="text" id="surname" name="surname" required autocapitalize="words" placeholder="Surname">
                 </div>
                 <div class="form-group">
                     <label>Gender</label>
-                    <select id="gender">
+                    <select id="gender" name="gender">
                         <option value="">Select gender...</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
-                        <option value="Prefer not to say">Prefer not to say</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Email Address <span class="required">*</span></label>
-                    <input type="email" id="email" required placeholder="name@example.com">
+                    <input type="email" id="email" name="email" required autocapitalize="off" placeholder="name@example.com">
                 </div>
                 <div class="form-group">
                     <label>Phone Number <span class="required">*</span></label>
-                    <input type="tel" id="phone" required placeholder="+63 917 000 0000">
+                    <input type="tel" id="phone" name="phone" required autocapitalize="off" placeholder="+63 917 000 0000">
                 </div>
                 <div class="form-group">
                     <label>Date of Birth</label>
-                    <input type="date" id="date_of_birth" onchange="calculateAge()">
+                    <input type="date" id="date_of_birth" name="date_of_birth" onchange="calculateAge()">
                 </div>
                 <div class="form-group">
                     <label>Age</label>
-                    <input type="number" id="age" placeholder="Age" min="15" max="100">
+                    <input type="number" id="age" name="age" placeholder="Age" min="15" max="100">
                 </div>
                 <div class="form-group">
                     <label>Place of Birth</label>
-                    <input type="text" id="place_of_birth" placeholder="City, Province, Country">
+                    <input type="text" id="place_of_birth" name="place_of_birth" autocapitalize="words" placeholder="City, Province, Country">
                 </div>
                 <div class="form-group">
                     <label>Civil Status</label>
-                    <select id="civil_status">
+                    <select id="civil_status" name="civil_status">
                         <option value="">Select status...</option>
                         <option value="Single">Single</option>
                         <option value="Married">Married</option>
@@ -308,15 +332,45 @@ input:focus, select:focus, textarea:focus{
                 </div>
                 <div class="form-group">
                     <label>Tax Identification Number (TIN)</label>
-                    <input type="text" id="tin" placeholder="e.g. 000-000-000-000">
+                    <input type="text" id="tin" name="tin" autocapitalize="words" placeholder="e.g. 000-000-000-000">
                 </div>
                 <div class="form-group full-width">
                     <label>Home Address</label>
-                    <input type="text" id="address" placeholder="House #, Street, Barangay, City, Province">
+                    <input type="text" id="address" name="address" autocapitalize="words" placeholder="House #, Street, Barangay, City, Province">
+                </div>
+                <div class="form-group">
+                    <label for="emergency_contact_name">Emergency Contact Name</label>
+                    <input type="text" id="emergency_contact_name" name="emergency_contact_name" autocapitalize="words" placeholder="Contact full name">
+                </div>
+                <div class="form-group">
+                    <label for="emergency_contact_phone">Emergency Contact Phone Number</label>
+                    <input type="tel" id="emergency_contact_phone" name="emergency_contact_phone" autocapitalize="off" placeholder="+63 917 000 0000">
+                </div>
+            </div>
+
+            <div class="section-title"><i class="fa-regular fa-id-card"></i> Identification</div>
+            <div class="form-grid">
+                <div class="requirement-note full-width" role="status" aria-live="polite">
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    <div><strong>Valid ID Requirement</strong><p id="validIdRequirement">Other applicants: Any Valid ID</p></div>
                 </div>
                 <div class="form-group full-width">
-                    <label>Emergency Contact (Name & Phone)</label>
-                    <input type="text" id="emergency_contact" placeholder="e.g. Maria Santos (Mother) - 0917-123-4567">
+                    <label for="id_photo">Identification Document <span class="required">*</span></label>
+                    <input class="upload-control" type="file" id="id_photo" name="id_photo" accept="image/jpeg,image/png,image/webp" required>
+                    <p class="field-hint">Upload a clear photo of your ID (JPG, PNG or WebP, up to 5 MB).</p>
+                    <p class="upload-name" id="uploadName" aria-live="polite"></p>
+                </div>
+                <div class="form-group full-width">
+                    <label for="id_picture">2×2 Picture <span class="required">*</span></label>
+                    <input class="upload-control" type="file" id="id_picture" name="id_picture" accept="image/jpeg,image/png,image/webp" required>
+                    <p class="field-hint">Attach a recent, clear 2×2 portrait photo (JPG, PNG or WebP, up to 5 MB).</p>
+                    <p class="upload-name" id="pictureUploadName" aria-live="polite"></p>
+                </div>
+                <div class="form-group full-width">
+                    <label for="resume">Resume / ID Photo</label>
+                    <input class="upload-control" type="file" id="resume" name="resume" accept="image/jpeg,image/png,image/webp">
+                    <p class="field-hint">Upload a clear photo of your ID (JPG, PNG or WebP, up to 5 MB).</p>
+                    <p class="upload-name" id="resumeUploadName" aria-live="polite"></p>
                 </div>
             </div>
 
@@ -332,7 +386,7 @@ input:focus, select:focus, textarea:focus{
             </div>
             <h2 style="font-size:22px; color:var(--text); margin-bottom:8px;">Application Submitted!</h2>
             <p style="color:var(--text-secondary); font-size:14px; max-width:500px; margin:0 auto 25px;">
-                Thank you for applying. Your candidate profile has been successfully transmitted to our Recruitment Team. We will contact you shortly if your qualifications match the position.
+                Your application has been successfully submitted. Please allow up to four days for review. You will receive an update via the Gmail address you provided in your application.
             </p>
             <button class="btn-submit" style="max-width:250px; margin:0 auto;" onclick="resetForm()">
                 <i class="fa-solid fa-plus"></i> Submit Another Application
@@ -350,6 +404,46 @@ input:focus, select:focus, textarea:focus{
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script>
+const positionField = document.getElementById('position');
+const validIdRequirement = document.getElementById('validIdRequirement');
+const uploadFields = [
+    ['id_photo', 'uploadName'],
+    ['id_picture', 'pictureUploadName'],
+    ['resume', 'resumeUploadName']
+];
+
+function updateValidIdRequirement() {
+    validIdRequirement.textContent = positionField.value === 'Driver'
+        ? 'Driver applicants: Driver’s License'
+        : 'Other applicants: Any Valid ID';
+}
+
+positionField.addEventListener('change', updateValidIdRequirement);
+uploadFields.forEach(([inputId, nameId]) => {
+    document.getElementById(inputId).addEventListener('change', (event) => {
+        document.getElementById(nameId).textContent = event.target.files[0] ? event.target.files[0].name : '';
+    });
+});
+
+document.querySelectorAll('#applicantForm input[type="text"], #applicantForm textarea').forEach((field) => {
+    field.autocapitalize = 'words';
+    field.addEventListener('input', () => {
+        const cursor = field.selectionStart;
+        const capitalized = field.value.replace(/(^|[\s-])([a-z])/g, (match, separator, letter) => separator + letter.toUpperCase());
+        if (capitalized !== field.value) {
+            field.value = capitalized;
+            field.setSelectionRange(cursor, cursor);
+        }
+    });
+});
+
+document.getElementById('applicantForm').addEventListener('reset', () => {
+    setTimeout(() => {
+        updateValidIdRequirement();
+        uploadFields.forEach(([, nameId]) => { document.getElementById(nameId).textContent = ''; });
+    }, 0);
+});
+
 function calculateAge() {
     const dob = document.getElementById('date_of_birth').value;
     if (!dob) return;
@@ -373,23 +467,14 @@ async function submitApplication(e) {
     alertBox.style.display = 'none';
     alertBox.className = 'alert-box';
 
-    const payload = {
-        position: document.getElementById('position').value.trim(),
-        department: document.getElementById('department').value,
-        first_name: document.getElementById('first_name').value.trim(),
-        middle_name: document.getElementById('middle_name').value.trim(),
-        surname: document.getElementById('surname').value.trim(),
-        gender: document.getElementById('gender').value,
-        email: document.getElementById('email').value.trim(),
-        phone: document.getElementById('phone').value.trim(),
-        date_of_birth: document.getElementById('date_of_birth').value,
-        age: document.getElementById('age').value,
-        place_of_birth: document.getElementById('place_of_birth').value.trim(),
-        civil_status: document.getElementById('civil_status').value,
-        tin: document.getElementById('tin').value.trim(),
-        address: document.getElementById('address').value.trim(),
-        emergency_contact: document.getElementById('emergency_contact').value.trim()
-    };
+    const formData = new FormData(document.getElementById('applicantForm'));
+    for (const [key, value] of formData.entries()) {
+        if (typeof value === 'string') formData.set(key, value.trim());
+    }
+    const emergencyName = document.getElementById('emergency_contact_name').value.trim();
+    const emergencyPhone = document.getElementById('emergency_contact_phone').value.trim();
+    formData.set('emergency_contact', [emergencyName, emergencyPhone].filter(Boolean).join(' - '));
+    formData.set('department', 'General');
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
@@ -404,8 +489,7 @@ async function submitApplication(e) {
             : `${baseUrl}/index.php?route=applicants`;
         const res = await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: formData
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Submission failed. PostgreSQL did not save the application.');

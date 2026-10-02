@@ -37,3 +37,53 @@ function sendPasswordResetEmail(string $recipient, string $otp): void {
     $mail->AltBody = "Your HRMS password reset code is {$otp}. It expires in 5 minutes.";
     $mail->send();
 }
+
+function sendInterviewScheduledEmail(string $recipient, array $interview): void {
+    if (!MAIL_HOST || !MAIL_USERNAME || !MAIL_PASSWORD || !MAIL_FROM_ADDRESS) {
+        throw new RuntimeException('SMTP email settings are incomplete.');
+    }
+
+    $escape = static function ($value): string {
+        return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    };
+    $details = [
+        'Applicant' => $interview['applicant_name'],
+        'Position' => $interview['position'] ?: 'Not specified',
+        'Date and time' => $interview['scheduled_at'],
+        'Interviewer' => $interview['interviewer'],
+        'Location' => $interview['location'] ?: 'To be confirmed',
+        'Notes' => $interview['notes'] ?: 'None'
+    ];
+    $rows = '';
+    $plainDetails = [];
+    foreach ($details as $label => $value) {
+        $rows .= '<tr><th style="padding:8px 12px;text-align:left;vertical-align:top;border-bottom:1px solid #e5e7eb;">'
+            . $escape($label) . '</th><td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">'
+            . nl2br($escape($value)) . '</td></tr>';
+        $plainDetails[] = $label . ': ' . $value;
+    }
+
+    $mail = new PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host = MAIL_HOST;
+    $mail->Port = MAIL_PORT;
+    $mail->SMTPAuth = true;
+    $mail->Username = MAIL_USERNAME;
+    $mail->Password = MAIL_PASSWORD;
+    $mail->SMTPSecure = MAIL_ENCRYPTION === 'ssl'
+        ? PHPMailer::ENCRYPTION_SMTPS
+        : PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->CharSet = 'UTF-8';
+    $mail->setFrom(MAIL_FROM_ADDRESS, MAIL_FROM_NAME);
+    $mail->addAddress($recipient);
+    $mail->isHTML(true);
+    $mail->Subject = 'Your HRMS interview has been scheduled';
+    $mail->Body = '<p>Hello ' . $escape($interview['applicant_name']) . ',</p>'
+        . '<p>Your interview has been scheduled. Here are the details:</p>'
+        . '<table style="width:100%;max-width:640px;border-collapse:collapse;">' . $rows . '</table>'
+        . '<p>Please contact the Recruitment Team if you have any questions.</p>';
+    $mail->AltBody = "Hello {$interview['applicant_name']},\n\nYour interview has been scheduled.\n\n"
+        . implode("\n", $plainDetails)
+        . "\n\nPlease contact the Recruitment Team if you have any questions.";
+    $mail->send();
+}

@@ -1,6 +1,7 @@
 -- HRMS non-destructive PostgreSQL migration for existing installations.
 -- Run this against the target database before deploying the PHP API.
 
+ALTER TABLE applicants ALTER COLUMN position DROP NOT NULL;
 ALTER TABLE applicants ADD COLUMN IF NOT EXISTS department VARCHAR(100) DEFAULT 'General';
 ALTER TABLE applicants ADD COLUMN IF NOT EXISTS gender VARCHAR(20) DEFAULT '';
 ALTER TABLE applicants ADD COLUMN IF NOT EXISTS address TEXT DEFAULT '';
@@ -9,13 +10,32 @@ ALTER TABLE applicants ADD COLUMN IF NOT EXISTS age INT DEFAULT 0;
 ALTER TABLE applicants ADD COLUMN IF NOT EXISTS place_of_birth VARCHAR(100) DEFAULT '';
 ALTER TABLE applicants ADD COLUMN IF NOT EXISTS tin VARCHAR(50) DEFAULT '';
 ALTER TABLE applicants ADD COLUMN IF NOT EXISTS civil_status VARCHAR(20) DEFAULT '';
-ALTER TABLE applicants ADD COLUMN IF NOT EXISTS emergency_contact VARCHAR(50) DEFAULT '';
+ALTER TABLE applicants ADD COLUMN IF NOT EXISTS emergency_contact VARCHAR(150) DEFAULT '';
+ALTER TABLE applicants ALTER COLUMN emergency_contact TYPE VARCHAR(150);
+ALTER TABLE applicants ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(100) DEFAULT '';
+ALTER TABLE applicants ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(50) DEFAULT '';
+ALTER TABLE applicants ADD COLUMN IF NOT EXISTS id_photo_path VARCHAR(100) DEFAULT '';
+ALTER TABLE applicants ADD COLUMN IF NOT EXISTS id_picture_path VARCHAR(100) DEFAULT '';
+ALTER TABLE applicants ADD COLUMN IF NOT EXISTS resume_path VARCHAR(100) DEFAULT '';
 
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_name VARCHAR(50) DEFAULT '';
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS first_name VARCHAR(50) DEFAULT '';
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS middle_name VARCHAR(50) DEFAULT '';
+ALTER TABLE employees ALTER COLUMN emergency_contact TYPE VARCHAR(150);
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100) DEFAULT '';
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_account VARCHAR(100) DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS interviews (
+    id BIGSERIAL PRIMARY KEY,
+    applicant_id INT NOT NULL REFERENCES applicants(id) ON DELETE CASCADE,
+    scheduled_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    interviewer VARCHAR(100) NOT NULL,
+    interview_type VARCHAR(30) NOT NULL DEFAULT 'In person' CHECK (interview_type IN ('In person', 'Video', 'Phone')),
+    location TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    status VARCHAR(20) NOT NULL DEFAULT 'Scheduled' CHECK (status IN ('Scheduled', 'Completed', 'Cancelled', 'No Show')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS leave_requests (
     id BIGSERIAL PRIMARY KEY,

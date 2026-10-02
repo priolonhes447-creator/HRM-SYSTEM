@@ -23,6 +23,25 @@ var getApiBase = window.getApiBase || (() => {
 var API_BASE = window.API_BASE || getApiBase();
 window.API_BASE = API_BASE;
 
+const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000;
+let inactivityTimeoutId = null;
+let inactivityListenersStarted = false;
+
+function startInactivityTimeout() {
+  if (inactivityListenersStarted) return;
+  inactivityListenersStarted = true;
+
+  const resetInactivityTimeout = () => {
+    window.clearTimeout(inactivityTimeoutId);
+    inactivityTimeoutId = window.setTimeout(logout, INACTIVITY_TIMEOUT_MS);
+  };
+
+  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'touchmove', 'pointerdown', 'pointermove', 'wheel', 'scroll', 'click', 'input', 'change', 'submit']
+    .forEach(eventName => document.addEventListener(eventName, resetInactivityTimeout, { capture: true, passive: true }));
+
+  resetInactivityTimeout();
+}
+
 // Store token & session user in sessionStorage (memory per tab session, not persistent localStorage)
 function storeToken(token) {
   sessionStorage.setItem('hrms_token', token);
@@ -89,6 +108,8 @@ function protectPage(requiredRole) {
     }
     return;
   }
+
+  startInactivityTimeout();
 }
 
 // LOGOUT

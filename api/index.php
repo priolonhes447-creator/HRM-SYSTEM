@@ -30,7 +30,7 @@ if (empty($route)) {
 $route = trim($route, '/');
 
 // Decode JSON input body for POST/PUT requests
-$input = json_decode(file_get_contents('php://input'), true) ?? [];
+$input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
 $pdo->exec(
     "CREATE TABLE IF NOT EXISTS password_resets (
@@ -672,6 +672,55 @@ try {
         respondJSON($stmt->fetchAll());
     }
 
+    if (preg_match('#^applicants/(\d+)$#', $route, $matches) && $requestMethod === 'GET') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+
+        $stmt = $pdo->prepare('SELECT * FROM applicants WHERE id = ?');
+        $stmt->execute([(int)$matches[1]]);
+        $applicant = $stmt->fetch();
+        if (!$applicant) respondError('Applicant not found.', 404);
+        respondJSON($applicant);
+    }
+
+    if (preg_match('#^applicants/(\d+)/(id-photo|2x2-photo|resume)$#', $route, $matches) && $requestMethod === 'GET') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+
+        $documentColumns = ['id-photo' => 'id_photo_path', '2x2-photo' => 'id_picture_path', 'resume' => 'resume_path'];
+        $documentColumn = $documentColumns[$matches[2]];
+        $stmt = $pdo->prepare("SELECT {$documentColumn} FROM applicants WHERE id = ?");
+        $stmt->execute([(int)$matches[1]]);
+        $documentName = $stmt->fetchColumn();
+        if (!$documentName) respondError('Applicant document not found.', 404);
+
+        $documentPath = __DIR__ . '/applicant-id-photos/' . basename($documentName);
+        if (!is_file($documentPath)) respondError('Applicant document not found.', 404);
+        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($documentPath);
+        $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        if (!isset($extensions[$mimeType])) respondError('Applicant image type is not supported.', 415);
+
+        header_remove('Content-Type');
+        header('Content-Type: ' . $mimeType);
+        header('Content-Disposition: inline; filename="applicant-' . $matches[2] . '-' . (int)$matches[1] . '.' . $extensions[$mimeType] . '"');
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        readfile($documentPath);
+        exit;
+    }
+
+    if (preg_match('#^applicants/(\d+)/decision$#', $route, $matches) && $requestMethod === 'POST') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+
+        $decision = trim($input['decision'] ?? '');
+        if (!in_array($decision, ['Interviewing', 'Rejected'], true)) respondError('Invalid applicant decision.', 400);
+        $stmt = $pdo->prepare('UPDATE applicants SET status = ? WHERE id = ?');
+        $stmt->execute([$decision, (int)$matches[1]]);
+        if ($stmt->rowCount() !== 1) respondError('Applicant not found or decision was not saved.', 404);
+        respondJSON(['message' => 'Applicant decision saved.', 'status' => $decision]);
+    }
+
     if ($route === 'applicants' && $requestMethod === 'POST') {
         $surname = trim($input['surname'] ?? '');
         $middleName = trim($input['middle_name'] ?? '');
@@ -681,20 +730,69 @@ try {
             $name = trim(implode(' ', array_filter([$firstName, $middleName, $surname])));
         }
         $position = trim($input['position'] ?? '');
-        if ((!$name && (!$surname || !$firstName)) || !$position) respondError("Surname, first name, and position are required.", 400);
+        if (!$name && (!$surname || !$firstName)) respondError("Surname and first name are required.", 400);
+
+        $uploadedFiles = [
+            'id_photo' => $_FILES['id_photo'] ?? null,
+            'id_picture' => $_FILES['id_picture'] ?? null,
+            'resume' => $_FILES['resume'] ?? null
+        ];
+        if (!$uploadedFiles['id_photo'] && !$uploadedFiles['id_picture'] && !$uploadedFiles['resume']) {
+            $authUser = requireAuth();
+            requireRole($authUser, 'admin');
+        }
+
+        $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        $photoExtensions = [];
+        foreach ($uploadedFiles as $field => $uploadedFile) {
+            if (!$uploadedFile) {
+                if ($field !== 'resume' && ($uploadedFiles['id_photo'] || $uploadedFiles['id_picture'])) {
+                    respondError('Upload both the identification document and 2x2 picture.', 400);
+                }
+                continue;
+            }
+            if ($uploadedFile['error'] !== UPLOAD_ERR_OK || $uploadedFile['size'] > 5 * 1024 * 1024) {
+                respondError('Each applicant image must be valid and no larger than 5 MB.', 400);
+            }
+            $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($uploadedFile['tmp_name']);
+            if (!isset($extensions[$mimeType])) respondError('Applicant images must be JPG, PNG, or WebP files.', 415);
+            $photoExtensions[$field] = $extensions[$mimeType];
+        }
 
         $appliedDate = $input['applied_date'] ?? date('Y-m-d');
-        $stmt = $pdo->prepare("INSERT INTO applicants (name, surname, middle_name, first_name, position, department, email, phone, gender, address, date_of_birth, age, place_of_birth, tin, civil_status, emergency_contact, applied_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([
-            $name, $surname, $middleName, $firstName, $position,
-            $input['department'] ?? 'General',
-            $input['email'] ?? '', $input['phone'] ?? '',
-            $input['gender'] ?? '', $input['address'] ?? '',
-            $input['date_of_birth'] ?? '', (int)($input['age'] ?? 0),
-            $input['place_of_birth'] ?? '', $input['tin'] ?? '',
-            $input['civil_status'] ?? '', $input['emergency_contact'] ?? '',
-            $appliedDate, $input['status'] ?? 'New'
-        ]);
+        $photoDirectory = __DIR__ . '/applicant-id-photos';
+        $savedPhotos = [];
+        if ($photoExtensions) {
+            if (!is_dir($photoDirectory) && !mkdir($photoDirectory, 0700, true) && !is_dir($photoDirectory)) {
+                respondError('Unable to save applicant images.', 500);
+            }
+            foreach ($photoExtensions as $field => $extension) {
+                $filename = bin2hex(random_bytes(16)) . '.' . $extension;
+                if (!move_uploaded_file($uploadedFiles[$field]['tmp_name'], $photoDirectory . '/' . $filename)) {
+                    foreach ($savedPhotos as $savedPhoto) @unlink($photoDirectory . '/' . $savedPhoto);
+                    respondError('Unable to save applicant images.', 500);
+                }
+                chmod($photoDirectory . '/' . $filename, 0600);
+                $savedPhotos[$field] = $filename;
+            }
+        }
+
+        try {
+            $stmt = $pdo->prepare("INSERT INTO applicants (name, surname, middle_name, first_name, position, department, email, phone, gender, address, date_of_birth, age, place_of_birth, tin, civil_status, emergency_contact, emergency_contact_name, emergency_contact_phone, id_photo_path, id_picture_path, resume_path, applied_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $name, $surname, $middleName, $firstName, $position,
+                $input['department'] ?? 'General', $input['email'] ?? '', $input['phone'] ?? '',
+                $input['gender'] ?? '', $input['address'] ?? '', $input['date_of_birth'] ?? '',
+                (int)($input['age'] ?? 0), $input['place_of_birth'] ?? '', $input['tin'] ?? '',
+                $input['civil_status'] ?? '', $input['emergency_contact'] ?? '',
+                $input['emergency_contact_name'] ?? '', $input['emergency_contact_phone'] ?? '',
+                $savedPhotos['id_photo'] ?? null, $savedPhotos['id_picture'] ?? null, $savedPhotos['resume'] ?? null,
+                $appliedDate, $input['status'] ?? 'New'
+            ]);
+        } catch (Throwable $error) {
+            foreach ($savedPhotos as $savedPhoto) @unlink($photoDirectory . '/' . $savedPhoto);
+            throw $error;
+        }
 
         respondJSON(['id' => (int)$pdo->lastInsertId(), 'message' => 'Applicant added successfully.'], 201);
     }
@@ -774,7 +872,86 @@ try {
     }
 
     // --------------------------------------------------------
-    // 6. ANNOUNCEMENT ROUTES
+    // 6. INTERVIEW ROUTES (Admin Only)
+    // --------------------------------------------------------
+    if ($route === 'interviews' && $requestMethod === 'GET') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+
+        $stmt = $pdo->query("SELECT i.*, a.name AS applicant_name, a.position AS applicant_position
+            FROM interviews i JOIN applicants a ON a.id = i.applicant_id
+            ORDER BY i.scheduled_at DESC, i.id DESC");
+        respondJSON($stmt->fetchAll());
+    }
+
+    if ($route === 'interviews' && $requestMethod === 'POST') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+
+        $applicantId = (int)($input['applicant_id'] ?? 0);
+        $scheduledInput = trim($input['scheduled_at'] ?? '');
+        $interviewer = trim($input['interviewer'] ?? '');
+        $scheduledAt = DateTime::createFromFormat('Y-m-d\\TH:i', $scheduledInput);
+        $dateErrors = DateTime::getLastErrors();
+        if (!$applicantId || !$scheduledAt || !$interviewer || ($dateErrors && ($dateErrors['warning_count'] || $dateErrors['error_count']))) {
+            respondError('Candidate, valid interview date and time, and interviewer are required.', 400);
+        }
+
+        $stmtApplicant = $pdo->prepare('SELECT id, name, position, email FROM applicants WHERE id = ?');
+        $stmtApplicant->execute([$applicantId]);
+        $applicant = $stmtApplicant->fetch();
+        if (!$applicant) respondError('Applicant not found.', 404);
+
+        $location = trim($input['location'] ?? '');
+        $notes = trim($input['notes'] ?? '');
+        $scheduledAtValue = $scheduledAt->format('Y-m-d H:i:s');
+        $stmt = $pdo->prepare("INSERT INTO interviews (applicant_id, scheduled_at, interviewer, location, notes)
+            VALUES (?, ?, ?, ?, ?) RETURNING id");
+        $stmt->execute([$applicantId, $scheduledAtValue, $interviewer, $location, $notes]);
+        $interviewId = (int)$stmt->fetchColumn();
+
+        $emailSent = false;
+        if (filter_var($applicant['email'] ?? '', FILTER_VALIDATE_EMAIL)) {
+            try {
+                require_once __DIR__ . '/mailer.php';
+                sendInterviewScheduledEmail($applicant['email'], [
+                    'applicant_name' => $applicant['name'],
+                    'position' => $applicant['position'] ?? '',
+                    'scheduled_at' => $scheduledAt->format('l, F j, Y \\a\\t g:i A'),
+                    'interviewer' => $interviewer,
+                    'location' => $location,
+                    'notes' => $notes
+                ]);
+                $emailSent = true;
+            } catch (Throwable $mailError) {
+                error_log('Interview email failed for interview ' . $interviewId . ': ' . $mailError->getMessage());
+            }
+        }
+
+        respondJSON([
+            'id' => $interviewId,
+            'email_sent' => $emailSent,
+            'message' => $emailSent
+                ? 'Interview scheduled and details emailed to the applicant.'
+                : 'Interview scheduled, but the notification email could not be sent.'
+        ], 201);
+    }
+
+    if (preg_match('#^interviews/(\\d+)$#', $route, $matches) && $requestMethod === 'PUT') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+
+        $status = trim($input['status'] ?? '');
+        $allowedStatuses = ['Scheduled', 'Completed', 'Cancelled', 'No Show'];
+        if (!in_array($status, $allowedStatuses, true)) respondError('Invalid interview status.', 400);
+        $stmt = $pdo->prepare('UPDATE interviews SET status = ? WHERE id = ?');
+        $stmt->execute([$status, (int)$matches[1]]);
+        if ($stmt->rowCount() !== 1) respondError('Interview not found or status was not updated.', 404);
+        respondJSON(['message' => 'Interview status updated.']);
+    }
+
+    // --------------------------------------------------------
+    // 7. ANNOUNCEMENT ROUTES
     // --------------------------------------------------------
     if ($route === 'announcements/mine' && $requestMethod === 'GET') {
         $authUser = requireAuth();

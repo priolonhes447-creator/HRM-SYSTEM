@@ -45,9 +45,9 @@ $databasePath = is_array($databaseParts) ? ltrim($databaseParts['path'] ?? '', '
 
 define('DB_HOST', getenv('DB_HOST') ?: getenv('PGHOST') ?: (is_array($databaseParts) ? ($databaseParts['host'] ?? '127.0.0.1') : '127.0.0.1'));
 define('DB_PORT', getenv('DB_PORT') ?: getenv('PGPORT') ?: (is_array($databaseParts) ? ($databaseParts['port'] ?? '5432') : '5432'));
-define('DB_NAME', getenv('DB_NAME') ?: getenv('PGDATABASE') ?: $databasePath ?: 'hrms_db');
-define('DB_USER', getenv('DB_USER') ?: getenv('PGUSER') ?: (is_array($databaseParts) ? urldecode($databaseParts['user'] ?? 'postgres') : 'postgres'));
-define('DB_PASS', getenv('DB_PASS') ?: getenv('PGPASSWORD') ?: (is_array($databaseParts) ? urldecode($databaseParts['pass'] ?? '') : ''));
+define('DB_NAME', getenv('DB_NAME') ?: getenv('DB_DATABASE') ?: getenv('PGDATABASE') ?: $databasePath ?: 'hrms_db');
+define('DB_USER', getenv('DB_USER') ?: getenv('DB_USERNAME') ?: getenv('PGUSER') ?: (is_array($databaseParts) ? urldecode($databaseParts['user'] ?? 'postgres') : 'postgres'));
+define('DB_PASS', getenv('DB_PASS') ?: getenv('DB_PASSWORD') ?: getenv('PGPASSWORD') ?: (is_array($databaseParts) ? urldecode($databaseParts['pass'] ?? '') : ''));
 define('DB_SSLMODE', getenv('DB_SSLMODE') ?: 'prefer');
 define('JWT_SECRET', getenv('JWT_SECRET') ?: 'hrms_php_supabase_secret_key_2026');
 define('MAIL_HOST', getenv('MAIL_HOST') ?: '');

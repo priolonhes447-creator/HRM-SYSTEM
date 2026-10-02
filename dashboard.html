@@ -4,12 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HRMS Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <!-- Using FontAwesome for Icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <!-- AI Assistant Stylesheet -->
 <link rel="stylesheet" href="ai-assistant.css">
 
+<script>
+try {
+    document.documentElement.dataset.theme = localStorage.getItem('hrms_admin_theme') === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.sidebarCollapsed = localStorage.getItem('hrms_sidebar_collapsed') === 'true' ? 'true' : 'false';
+} catch (error) {
+    document.documentElement.dataset.theme = 'light';
+    document.documentElement.dataset.sidebarCollapsed = 'false';
+}
+</script>
 
 <style>
 /* ================= GLOBAL STYLES ================= */
@@ -24,8 +33,28 @@
     --background:#F8FAFC;
     --card:#FFFFFF;
     --text:#1F2937;
+    --text-muted:#6B7280;
     --border:#EEF2F7;
+    --surface-muted:#F8FAFC;
+    --surface-hover:#F1F5F9;
     --sidebar-width: 260px;
+}
+
+@media (min-width: 992px) {
+    :root[data-sidebar-collapsed="true"] { --sidebar-width: 56px; }
+    html[data-sidebar-collapsed="true"] .brand { justify-content: center; padding-right: 8px; padding-left: 8px; }
+    html[data-sidebar-collapsed="true"] .brand-logo { width: 36px; height: 36px; flex-basis: 36px; }
+    html[data-sidebar-collapsed="true"] .brand-name,
+    html[data-sidebar-collapsed="true"] .menu-category,
+    html[data-sidebar-collapsed="true"] .sidebar a span,
+    html[data-sidebar-collapsed="true"] .sidebar-menu-group > summary span,
+    html[data-sidebar-collapsed="true"] .sidebar-menu-chevron { display: none; }
+    html[data-sidebar-collapsed="true"] .sidebar a,
+    html[data-sidebar-collapsed="true"] .sidebar-menu-group > summary { justify-content: center; gap: 0; padding: 12px 8px; }
+    html[data-sidebar-collapsed="true"] .sidebar-submenu { padding-bottom: 0; }
+    html[data-sidebar-collapsed="true"] .sidebar-submenu a { padding-right: 8px; padding-left: 8px; }
+    html[data-sidebar-collapsed="true"] .sidebar-collapse-row { justify-content: center; padding-right: 0; padding-left: 0; }
+    html[data-sidebar-collapsed="true"] .sidebar-collapse-icon { transform: rotate(180deg); }
 }
 
 body{ background:var(--background); color:var(--text); display:flex; min-height:100vh; }
@@ -39,6 +68,7 @@ body{ background:var(--background); color:var(--text); display:flex; min-height:
     height: 100%;
     overflow-y: auto;
     z-index: 100;
+    transition: width .22s ease;
 }
 
 /* Slim scrollbar for the sidebar so nav items are always reachable */
@@ -57,15 +87,43 @@ body{ background:var(--background); color:var(--text); display:flex; min-height:
 }
 
 .brand {
-    padding: 25px;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--primary);
+    min-height: 84px;
+    padding: 15px 25px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
+
+.brand-logo {
+    display: block;
+    width: 54px;
+    height: 54px;
+    flex: 0 0 54px;
+    object-fit: contain;
+}
+
+.brand-name {
+    color: var(--text);
+    font-size: 19px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.sidebar-collapse-row { display: flex; justify-content: flex-end; padding: 8px 14px 0; }
+.sidebar-collapse-toggle {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.sidebar-collapse-toggle:hover { color: var(--primary); border-color: var(--primary); }
+.sidebar-collapse-icon { transition: transform .22s ease; }
 
 .menu-category {
     padding: 20px 25px 10px;
@@ -94,12 +152,31 @@ body{ background:var(--background); color:var(--text); display:flex; min-height:
     border-right: 3px solid var(--primary);
 }
 
+.sidebar-menu-group > summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 25px;
+    color: #4B5563;
+    cursor: pointer;
+    list-style: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+.sidebar-menu-group > summary::-webkit-details-marker { display: none; }
+.sidebar-menu-group > summary:hover { background: #EFF6FF; color: var(--primary); }
+.sidebar-menu-chevron { margin-left: auto; font-size: 11px; transition: transform .2s ease; }
+.sidebar-menu-group[open] .sidebar-menu-chevron { transform: rotate(180deg); }
+.sidebar-submenu { padding-bottom: 6px; }
+.sidebar-submenu a { padding-left: 45px; font-size: 13px; }
+
 /* ================= MAIN CONTENT ================= */
 .main-content{
     margin-left: var(--sidebar-width);
     width: calc(100% - var(--sidebar-width));
     display: flex;
     flex-direction: column;
+    transition: margin-left .22s ease, width .22s ease;
 }
 
 header{
@@ -378,6 +455,115 @@ tr:hover { background: #f9fafb; }
 .form-control:focus { border-color: var(--primary); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
+/* ================= SETTINGS ================= */
+.settings-page { max-width: 980px; margin: 0 auto; }
+.settings-heading { display: flex; align-items: flex-start; gap: 16px; margin: 8px 0 34px; }
+.settings-heading-icon { display: grid; place-items: center; width: 46px; height: 46px; flex: 0 0 46px; border-radius: 12px; background: #EAF3FF; color: var(--primary); font-size: 18px; }
+.settings-heading h2 { margin: 0 0 6px; font-size: 25px; color: var(--text); }
+.settings-heading p { color: var(--text-muted); font-size: 14px; line-height: 1.5; }
+.settings-eyebrow { margin-bottom: 5px; color: var(--primary) !important; font-size: 11px !important; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+.settings-section { display: grid; grid-template-columns: minmax(180px, .75fr) minmax(0, 1.5fr); gap: 40px; padding: 26px 0; border-top: 1px solid var(--border); }
+.settings-section-copy h3 { margin-bottom: 7px; font-size: 16px; color: var(--text); }
+.settings-section-copy p { max-width: 300px; color: var(--text-muted); font-size: 13px; line-height: 1.55; }
+.settings-section-content { min-width: 0; }
+.theme-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.theme-option { position: relative; display: flex; align-items: center; gap: 12px; min-height: 70px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 9px; background: var(--card); cursor: pointer; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+.theme-option:has(input:checked) { border-color: var(--primary); background: #F3F8FF; box-shadow: 0 0 0 2px rgba(47,128,237,.12); }
+.theme-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); }
+.theme-option-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; background: var(--surface-muted); color: var(--text-muted); }
+.theme-option input:checked + .theme-option-icon { background: #DDEBFF; color: var(--primary); }
+.theme-option-copy { display: grid; gap: 3px; }
+.theme-option-copy strong { color: var(--text); font-size: 13px; }
+.theme-option-copy small { color: var(--text-muted); font-size: 11px; }
+.settings-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.settings-fields .form-group { margin-bottom: 17px; }
+.settings-fields .form-group label { color: var(--text); }
+.settings-fields .form-control { min-height: 42px; background: var(--card); color: var(--text); }
+.settings-fields .form-control:disabled { background: var(--surface-muted); color: var(--text-muted); cursor: not-allowed; }
+.settings-actions { display: flex; justify-content: flex-end; padding-top: 4px; }
+.settings-actions .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 17px; }
+@media (max-width: 768px) {
+    .settings-section { grid-template-columns: 1fr; gap: 14px; }
+    .settings-section-copy p { max-width: none; }
+    .settings-fields { grid-template-columns: 1fr; }
+    .settings-heading { margin-bottom: 26px; }
+}
+@media (max-width: 420px) {
+    .theme-options { grid-template-columns: 1fr; }
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --primary:#69A9FF;
+    --background:#0D1421;
+    --card:#151F2E;
+    --text:#E6EDF6;
+    --text-muted:#9AA9BD;
+    --border:#2A3749;
+    --surface-muted:#111A28;
+    --surface-hover:#202D3F;
+}
+
+html[data-theme="dark"] body { background: var(--background); color: var(--text); }
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] header,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .content-card,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .profile-dropdown-menu { background: var(--card); color: var(--text); }
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .brand,
+html[data-theme="dark"] th,
+html[data-theme="dark"] td,
+html[data-theme="dark"] .settings-section { border-color: var(--border); }
+html[data-theme="dark"] .sidebar a { color: #C4D0DF; }
+html[data-theme="dark"] .sidebar a:hover,
+html[data-theme="dark"] .sidebar a.active { background: #192A3E; color: #8DBEFF; }
+html[data-theme="dark"] .sidebar-menu-group > summary { color: #C4D0DF; }
+html[data-theme="dark"] .sidebar-menu-group > summary:hover { background: #192A3E; color: #8DBEFF; }
+html[data-theme="dark"] .menu-category,
+html[data-theme="dark"] .stat-card h3,
+html[data-theme="dark"] th { color: var(--text-muted); }
+html[data-theme="dark"] .user-profile-btn { background: var(--surface-muted); border-color: var(--border); color: var(--text); }
+html[data-theme="dark"] .user-profile-btn:hover,
+html[data-theme="dark"] .user-profile-btn.active { background: var(--surface-hover); border-color: #43536A; }
+html[data-theme="dark"] .user-details-text strong,
+html[data-theme="dark"] .dropdown-header-info strong,
+html[data-theme="dark"] .dropdown-item,
+html[data-theme="dark"] .settings-heading h2,
+html[data-theme="dark"] .settings-section-copy h3,
+html[data-theme="dark"] .settings-fields .form-group label { color: var(--text); }
+html[data-theme="dark"] .dropdown-header-card,
+html[data-theme="dark"] .theme-option,
+html[data-theme="dark"] .settings-fields .form-control { background: var(--surface-muted); }
+html[data-theme="dark"] .dropdown-header-info .user-email,
+html[data-theme="dark"] .user-details-text small,
+html[data-theme="dark"] .dropdown-item:hover,
+html[data-theme="dark"] .dropdown-header-info .user-email,
+html[data-theme="dark"] .settings-heading p,
+html[data-theme="dark"] .settings-section-copy p,
+html[data-theme="dark"] .theme-option-copy small { color: var(--text-muted); }
+html[data-theme="dark"] .dropdown-item:hover { background: var(--surface-hover); color: var(--text); }
+html[data-theme="dark"] .dropdown-divider { background: var(--border); }
+html[data-theme="dark"] .profile-dropdown-menu,
+html[data-theme="dark"] .theme-option,
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] select,
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea { border-color: var(--border); color: var(--text); }
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] select,
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea { background-color: var(--surface-muted); }
+html[data-theme="dark"] .form-control:disabled { background: #1A2637; color: var(--text-muted); }
+html[data-theme="dark"] tr:hover { background: #192637; }
+html[data-theme="dark"] .theme-option:has(input:checked) { background: #172B43; border-color: var(--primary); }
+html[data-theme="dark"] .theme-option-icon { background: var(--surface-hover); }
+html[data-theme="dark"] .theme-option input:checked + .theme-option-icon { background: #203A5B; color: #9BC6FF; }
+html[data-theme="dark"] .settings-heading-icon { background: #1A2C43; color: #9BC6FF; }
+html[data-theme="dark"] .candidate-photo-frame { background: var(--surface-muted); color: var(--text-muted); }
+html[data-theme="dark"] .sidebar-collapse-toggle { background: var(--surface-muted); border-color: var(--border); color: var(--text-muted); }
+
 /* ================= MODAL ================= */
 .modal-overlay {
     display: none;
@@ -404,6 +590,52 @@ tr:hover { background: #f9fafb; }
 
 /* Empty state */
 .empty-state { text-align: center; color: #9CA3AF; padding: 20px; }
+.candidate-name-link{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-weight:700;text-align:left;cursor:pointer}
+.candidate-name-link:hover{text-decoration:underline}
+.candidate-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
+.candidate-detail{padding:12px 0;border-bottom:1px solid var(--border);min-width:0}
+.candidate-detail span{display:block;margin-bottom:4px;color:#6B7280;font-size:12px}
+.candidate-detail strong{display:block;overflow-wrap:anywhere;font-size:14px;font-weight:600}
+.candidate-document-previews{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:22px}
+.candidate-photo-preview{min-width:0}
+.candidate-photo-preview>span{display:block;margin-bottom:7px;color:#6B7280;font-size:12px;font-weight:600}
+.candidate-photo-frame{display:grid;place-items:center;min-height:190px;padding:8px;border:1px solid var(--border);background:#F8FAFC;color:#6B7280;font-size:13px;text-align:center}
+.candidate-photo-frame.square{aspect-ratio:1;min-height:0}
+.candidate-photo-frame img{display:block;max-width:100%;max-height:280px;object-fit:contain}
+.candidate-photo-zoom{display:grid;place-items:center;width:100%;max-height:300px;padding:0;border:0;background:transparent;cursor:zoom-in}
+.candidate-photo-zoom img{display:block;max-width:100%;max-height:280px;object-fit:contain}
+.candidate-document-actions,.candidate-decision-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.photo-lightbox{display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;padding:5vh 4vw;background:rgba(9,16,18,.94)}
+.photo-lightbox.show{display:flex}
+.photo-lightbox>img{display:block;max-width:92vw;max-height:88vh;object-fit:contain}
+.photo-lightbox-close{position:absolute;top:16px;right:18px;width:44px;height:44px;padding:0;border:1px solid rgba(255,255,255,.35);border-radius:4px;background:rgba(0,0,0,.25);color:#fff;font-size:20px;cursor:pointer}
+.interview-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+.interview-form-grid .form-group.full-width{grid-column:1/-1}
+.interview-status-cell{min-width:150px}
+@media(max-width:640px){.candidate-details-grid,.interview-form-grid{grid-template-columns:1fr}.interview-form-grid .form-group.full-width{grid-column:auto}}
+.candidate-name-link{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-weight:700;text-align:left;cursor:pointer}
+.candidate-name-link:hover{text-decoration:underline}
+.candidate-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
+.candidate-detail{padding:12px 0;border-bottom:1px solid var(--border);min-width:0}
+.candidate-detail span{display:block;margin-bottom:4px;color:#6B7280;font-size:12px}
+.candidate-detail strong{display:block;overflow-wrap:anywhere;font-size:14px;font-weight:600}
+.candidate-document-previews{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:22px}
+.candidate-photo-preview{min-width:0}
+.candidate-photo-preview>span{display:block;margin-bottom:7px;color:#6B7280;font-size:12px;font-weight:600}
+.candidate-photo-frame{display:grid;place-items:center;min-height:190px;padding:8px;border:1px solid var(--border);background:#F8FAFC;color:#6B7280;font-size:13px;text-align:center}
+.candidate-photo-frame.square{aspect-ratio:1;min-height:0}
+.candidate-photo-frame img{display:block;max-width:100%;max-height:280px;object-fit:contain}
+.candidate-photo-zoom{display:grid;place-items:center;width:100%;max-height:300px;padding:0;border:0;background:transparent;cursor:zoom-in}
+.candidate-photo-zoom img{display:block;max-width:100%;max-height:280px;object-fit:contain}
+.candidate-document-actions,.candidate-decision-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.photo-lightbox{display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;padding:5vh 4vw;background:rgba(9,16,18,.94)}
+.photo-lightbox.show{display:flex}
+.photo-lightbox>img{display:block;max-width:92vw;max-height:88vh;object-fit:contain}
+.photo-lightbox-close{position:absolute;top:16px;right:18px;width:44px;height:44px;padding:0;border:1px solid rgba(255,255,255,.35);border-radius:4px;background:rgba(0,0,0,.25);color:#fff;font-size:20px;cursor:pointer}
+.interview-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+.interview-form-grid .form-group.full-width{grid-column:1/-1}
+.interview-status-cell{min-width:150px}
+@media(max-width:640px){.candidate-details-grid,.interview-form-grid{grid-template-columns:1fr}.interview-form-grid .form-group.full-width{grid-column:auto}}
 
 @keyframes fadeIn { from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
 
@@ -725,6 +957,9 @@ tr:hover { background: #f9fafb; }
     .mobile-nav-toggle {
         display: flex;
     }
+    .sidebar-collapse-row {
+        display: none;
+    }
     .sidebar {
         left: -280px;
         top: 0;
@@ -787,6 +1022,106 @@ tr:hover { background: #f9fafb; }
         padding: 4px 8px;
     }
 }
+
+:root {
+    --primary: #087E78;
+    --secondary: #D87350;
+    --accent: #378866;
+    --background: #F3F7F5;
+    --card: #FFFFFF;
+    --text: #1D302E;
+    --text-muted: #637572;
+    --border: #DCE7E3;
+    --surface-muted: #F7FAF8;
+    --surface-hover: #EDF4F1;
+    --sidebar-width: 252px;
+}
+
+* { font-family: 'DM Sans', sans-serif; }
+body { background: var(--background); color: var(--text); line-height: 1.5; }
+button, input, select, textarea { font: inherit; }
+.main-content { min-width: 0; }
+.page-container { width: 100%; max-width: 1640px; margin: 0 auto; padding: 28px clamp(18px, 3vw, 38px); }
+
+.sidebar, header, .stat-card, .content-card, .modal, .profile-dropdown-menu {
+    border-color: var(--border);
+}
+
+.sidebar { background: #FFFFFF; }
+.brand-name, #page-title, .card-header h3, .settings-heading h2 { font-family: 'Manrope', sans-serif; }
+header { min-height: 70px; border-bottom: 1px solid var(--border); box-shadow: 0 2px 8px rgba(29,48,46,.035); }
+.sidebar a { border-right: 3px solid transparent; border-radius: 0 6px 6px 0; }
+.sidebar a:hover, .sidebar a.active { background: #EAF4F1; color: #075E59; border-right-color: var(--primary); }
+.sidebar-menu-group > summary:hover { background: #EAF4F1; color: #075E59; }
+
+.stats-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; }
+.stat-card, .content-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(29,48,46,.035);
+}
+.stat-card { border-left: 3px solid var(--primary); padding: 22px; }
+.stat-card h3 { color: var(--text-muted); font-size: 13px; font-weight: 600; }
+.stat-card .value { font-family: 'Manrope', sans-serif; font-variant-numeric: tabular-nums; }
+.content-card { padding: 24px; }
+.card-header { gap: 16px; }
+.card-header h3 { font-size: 17px; }
+
+.btn { min-height: 40px; border-radius: 6px; font: 600 14px 'DM Sans', sans-serif; }
+.btn-primary { background: var(--primary); }
+.btn-primary:hover { background: #075E59; }
+.btn-sm { min-height: 32px; }
+.form-control, select, input, textarea { border-radius: 5px; font-family: inherit; }
+.form-control:focus, select:focus, input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(8,126,120,.12); }
+th { background: #F7FAF8; color: #637572; font-size: 11px; letter-spacing: .04em; }
+th, td { padding: 13px 15px; }
+tr:hover { background: #F5F9F7; }
+
+:where(button, a, input, select, textarea, summary):focus-visible {
+    outline: 3px solid rgba(8,126,120,.35);
+    outline-offset: 2px;
+}
+
+html[data-theme="dark"] {
+    --primary: #65C8B9;
+    --background: #101A19;
+    --card: #182423;
+    --text: #E5F0ED;
+    --text-muted: #A7BBB6;
+    --border: #2B3D3A;
+    --surface-muted: #13201E;
+    --surface-hover: #22332F;
+}
+
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] header,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .content-card,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .profile-dropdown-menu { background: var(--card); }
+html[data-theme="dark"] .sidebar a:hover,
+html[data-theme="dark"] .sidebar a.active,
+html[data-theme="dark"] .sidebar-menu-group > summary:hover { background: #203430; color: #8DE0D1; }
+html[data-theme="dark"] .sidebar a.active { border-right-color: var(--primary); }
+html[data-theme="dark"] th { background: #13201E; color: var(--text-muted); }
+html[data-theme="dark"] tr:hover { background: #1C2C29; }
+
+@media (max-width: 768px) {
+    .page-container { padding: 20px 16px; }
+    .stats-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+    .content-card { padding: 19px; }
+}
+
+@media (max-width: 480px) {
+    .page-container { padding: 16px 12px; }
+    .stats-grid { grid-template-columns: 1fr; gap: 12px; }
+    .content-card { padding: 16px; }
+    header { padding: 10px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
 </style>
 </head>
 <body>
@@ -797,22 +1132,34 @@ tr:hover { background: #f9fafb; }
 <!-- SIDEBAR -->
 <div class="sidebar" id="sidebarNav">
     <div class="brand">
-        <span>Human Resources</span>
+        <img src="toursphere-logo.png" alt="Toursphere Travel &amp; Tours" class="brand-logo">
+        <span class="brand-name">Toursphere</span>
+    </div>
+    <div class="sidebar-collapse-row">
+        <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggle" onclick="toggleSidebarCollapse()" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar">
+            <i class="fa-solid fa-angles-left sidebar-collapse-icon"></i>
+        </button>
     </div>
 
     <div class="menu-category">Core HR</div>
-    <a href="#" onclick="showSection('dashboard')" class="active"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></a>
-    <a href="#" onclick="showSection('employees')"><i class="fa-solid fa-user-tie"></i> <span>Employee Records</span></a>
-    <a href="#" onclick="showSection('accounts')"><i class="fa-solid fa-user-gear"></i> <span>User Account Management</span></a>
-    <a href="#" onclick="showSection('ess')"><i class="fa-solid fa-id-card"></i> <span>My Profile</span></a>
+    <a href="#" onclick="showSection('dashboard')" class="active" title="Dashboard" aria-label="Dashboard"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></a>
+    <a href="#" onclick="showSection('employees')" title="Employee Records" aria-label="Employee Records"><i class="fa-solid fa-user-tie"></i> <span>Employee Records</span></a>
+    <a href="#" onclick="showSection('accounts')" title="User Account Management" aria-label="User Account Management"><i class="fa-solid fa-user-gear"></i> <span>User Account Management</span></a>
 
     <div class="menu-category">Recruitment</div>
-    <a href="#" onclick="showSection('applicants')"><i class="fa-solid fa-file-contract"></i> <span>Applicant Mgmt</span></a>
-    <a href="#" onclick="showSection('onboarding')"><i class="fa-solid fa-handshake"></i> <span>Onboarding</span></a>
+    <a href="#" onclick="showSection('applicants')" title="Applicant Management" aria-label="Applicant Management"><i class="fa-solid fa-file-contract"></i> <span>Applicant Mgmt</span></a>
+    <details class="sidebar-menu-group" open>
+        <summary title="Interviews" aria-label="Interviews"><i class="fa-solid fa-calendar-check"></i> <span>Interviews</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i></summary>
+        <div class="sidebar-submenu">
+            <a href="#" onclick="showSection('interviews')" title="Interview Management" aria-label="Interview Management"><i class="fa-solid fa-calendar-plus"></i> <span>Interview Management</span></a>
+            <a href="#" onclick="showSection('interview-schedule')" title="Interview Schedule" aria-label="Interview Schedule"><i class="fa-solid fa-list-check"></i> <span>Interview Schedule</span></a>
+        </div>
+    </details>
+    <a href="#" onclick="showSection('onboarding')" title="Onboarding" aria-label="Onboarding"><i class="fa-solid fa-handshake"></i> <span>Onboarding</span></a>
 
     <div class="menu-category">Communication & AI</div>
-    <a href="#" onclick="showSection('announcements')"><i class="fa-solid fa-bullhorn"></i> <span>Announcements</span></a>
-    <a href="#" onclick="openAIAssistant(); closeMobileSidebar();"><i class="fa-solid fa-sparkles" style="color:#7B61FF;"></i> <span style="font-weight:600; background:linear-gradient(135deg, #2F80ED, #7B61FF); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">AI Assistant</span></a>
+    <a href="#" onclick="showSection('announcements')" title="Announcements" aria-label="Announcements"><i class="fa-solid fa-bullhorn"></i> <span>Announcements</span></a>
+    <a href="#" onclick="openAIAssistant(); closeMobileSidebar();" title="AI Assistant" aria-label="AI Assistant"><i class="fa-solid fa-sparkles" style="color:#7B61FF;"></i> <span style="font-weight:600; background:linear-gradient(135deg, #2F80ED, #7B61FF); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">AI Assistant</span></a>
 </div>
 
 
@@ -847,9 +1194,9 @@ tr:hover { background: #f9fafb; }
                     </div>
                 </div>
                 <div class="dropdown-divider"></div>
-                <a class="dropdown-item" onclick="showSection('ess'); closeAllDropdowns();">
-                    <i class="fa-solid fa-user" style="color:var(--primary);"></i>
-                    <span>Profile</span>
+                <a class="dropdown-item" onclick="showSection('settings'); closeAllDropdowns();">
+                    <i class="fa-solid fa-gear" style="color:var(--primary);"></i>
+                    <span>Settings</span>
                 </a>
                 <div class="dropdown-divider"></div>
                 <button class="dropdown-item danger-item" onclick="logout()">
@@ -961,25 +1308,58 @@ tr:hover { background: #f9fafb; }
             </div>
         </div>
 
-        <!-- 4. ESS (SELF SERVICE) -->
-        <div id="ess" class="section">
-            <div class="form-row">
-                <div class="content-card">
-                    <h3>My Profile</h3>
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" id="ess-name" class="form-control" value="Admin User">
+        <!-- 4. ACCOUNT SETTINGS -->
+        <div id="settings" class="section">
+            <div class="settings-page">
+                <div class="settings-heading">
+                    <div class="settings-heading-icon"><i class="fa-solid fa-sliders"></i></div>
+                    <div>
+                        <p class="settings-eyebrow">Preferences</p>
+                        <h2>Settings</h2>
+                        <p>Manage your account details and how the dashboard looks.</p>
                     </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="text" id="ess-email" class="form-control" value="admin@gmail.com" disabled>
+                </div>
+
+                <section class="settings-section" aria-labelledby="appearance-heading">
+                    <div class="settings-section-copy">
+                        <h3 id="appearance-heading">Appearance</h3>
+                        <p>Choose the theme used throughout your dashboard.</p>
                     </div>
-                    <button class="btn btn-primary" onclick="updateAdminProfile()">Update Profile</button>
-                </div>
-                <div class="content-card">
-                    <h3>Quick Actions</h3>
-                    <p style="color:#6B7280; font-size:14px;">Use the sidebar to navigate HR modules.</p>
-                </div>
+                    <fieldset class="theme-options" aria-label="Color theme">
+                        <label class="theme-option">
+                            <input type="radio" name="theme-choice" value="light" onchange="setThemePreference(this.value)">
+                            <span class="theme-option-icon"><i class="fa-solid fa-sun"></i></span>
+                            <span class="theme-option-copy"><strong>Light</strong><small>Bright and clear</small></span>
+                        </label>
+                        <label class="theme-option">
+                            <input type="radio" name="theme-choice" value="dark" onchange="setThemePreference(this.value)">
+                            <span class="theme-option-icon"><i class="fa-solid fa-moon"></i></span>
+                            <span class="theme-option-copy"><strong>Dark</strong><small>Low-light friendly</small></span>
+                        </label>
+                    </fieldset>
+                </section>
+
+                <section class="settings-section" aria-labelledby="account-details-heading">
+                    <div class="settings-section-copy">
+                        <h3 id="account-details-heading">Account details</h3>
+                        <p>Update the name shown in your profile and dashboard.</p>
+                    </div>
+                    <div class="settings-section-content">
+                        <div class="settings-fields">
+                            <div class="form-group">
+                                <label for="settings-name">Full name</label>
+                                <input type="text" id="settings-name" class="form-control" value="Admin User" autocomplete="name">
+                            </div>
+                            <div class="form-group">
+                                <label for="settings-email">Email address</label>
+                                <input type="text" id="settings-email" class="form-control" value="admin@gmail.com" disabled>
+                            </div>
+                        </div>
+                        <div class="settings-actions">
+                            <button class="btn btn-primary" onclick="updateAccountSettings()"><i class="fa-solid fa-check"></i> Save Changes</button>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
 
@@ -993,7 +1373,6 @@ tr:hover { background: #f9fafb; }
                     </div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
                         <a href="apply.html" target="_blank" class="btn" style="background:#EFF6FF; color:var(--primary); text-decoration:none; font-size:13px;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Application Form</a>
-                        <button class="btn btn-primary" onclick="openApplicantModal()">+ Add Candidate</button>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -1003,13 +1382,69 @@ tr:hover { background: #f9fafb; }
                                 <th>Candidate</th>
                                 <th>Position</th>
                                 <th>Applied Date</th>
-                                <th>Status</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="applicant-table-body">
-                            <tr><td colspan="5" class="empty-state">Loading applicants...</td></tr>
+                            <tr><td colspan="4" class="empty-state">Loading applicants...</td></tr>
                         </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- INTERVIEWS -->
+        <div id="interviews" class="section">
+            <div class="content-card">
+                <div class="card-header">
+                    <div><h3>Schedule Interview</h3><small style="color:#64748B;">Create and manage candidate interviews.</small></div>
+                </div>
+                <form id="interview-form" onsubmit="scheduleInterview(event)">
+                    <div class="interview-form-grid">
+                        <div class="form-group">
+                            <label for="interview-applicant-name">Candidate</label>
+                            <input type="text" id="interview-applicant-name" class="form-control" readonly>
+                            <input type="hidden" id="interview-applicant">
+                        </div>
+                        <div class="form-group">
+                            <label for="interview-date">Interview Date</label>
+                            <input type="date" id="interview-date" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="interview-time">Interview Time</label>
+                            <input type="time" id="interview-time" class="form-control" step="900" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="interview-interviewer">Interviewer</label>
+                            <input type="text" id="interview-interviewer" class="form-control" required placeholder="Interviewer name">
+                        </div>
+                        <div class="form-group">
+                            <label for="interview-quick-location">Quick Select Location</label>
+                            <select id="interview-quick-location" class="form-control">
+                                <option value="">Choose a location...</option>
+                                <option value="Lower Ground Floor, Ever Gotesco Commonwealth">Lower Ground Floor, Ever Gotesco Commonwealth</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="interview-location">Location</label>
+                            <input type="text" id="interview-location" class="form-control" placeholder="Interview location">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="interview-notes">Notes</label>
+                            <textarea id="interview-notes" class="form-control" rows="3" placeholder="Preparation notes or agenda"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-calendar-plus"></i> Schedule Interview</button>
+                </form>
+            </div>
+        </div>
+        <div id="interview-schedule" class="section">
+            <div class="content-card">
+                <div class="card-header"><div><h3>Interview Schedule</h3></div></div>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Candidate</th><th>Position</th><th>Date and Time</th><th>Interviewer</th><th>Location</th><th>Notes</th><th>Status</th></tr></thead>
+                        <tbody id="interview-table-body"><tr><td colspan="7" class="empty-state">Loading interviews...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -1508,6 +1943,20 @@ tr:hover { background: #f9fafb; }
     </div>
 </div>
 
+<div class="modal-overlay" id="applicantDetailsModal" onclick="if(event.target===this) closeApplicantDetails()">
+    <div class="modal" style="max-width:760px;">
+        <div class="card-header">
+            <div><h3 id="applicant-details-title">Applicant Details</h3></div>
+            <button class="btn btn-sm" onclick="closeApplicantDetails()" aria-label="Close applicant details"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="applicant-details-content"></div>
+    </div>
+</div>
+<div class="photo-lightbox" id="applicantPhotoLightbox" aria-hidden="true" onclick="if(event.target===this) closeApplicantPhotoZoom()">
+    <button type="button" class="photo-lightbox-close" onclick="closeApplicantPhotoZoom()" aria-label="Close enlarged photo"><i class="fa-solid fa-xmark"></i></button>
+    <img id="applicantPhotoZoomImage" alt="">
+</div>
+
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script>
@@ -1515,6 +1964,29 @@ tr:hover { background: #f9fafb; }
 // API_BASE is provided globally by auth.js
 
 // ================= MOBILE NAVIGATION LOGIC =================
+function syncSidebarCollapseControl() {
+    const isExpanded = document.documentElement.dataset.sidebarCollapsed !== 'true';
+    const button = document.getElementById('sidebarCollapseToggle');
+    if (!button) return;
+
+    const label = isExpanded ? 'Collapse sidebar' : 'Expand sidebar';
+    button.setAttribute('aria-expanded', String(isExpanded));
+    button.setAttribute('aria-label', label);
+    button.title = label;
+}
+
+function toggleSidebarCollapse() {
+    const root = document.documentElement;
+    const isCollapsed = root.dataset.sidebarCollapsed !== 'true';
+    root.dataset.sidebarCollapsed = String(isCollapsed);
+    try {
+        localStorage.setItem('hrms_sidebar_collapsed', String(isCollapsed));
+    } catch (error) {
+        console.warn('Sidebar preference could not be saved:', error);
+    }
+    syncSidebarCollapseControl();
+}
+
 function toggleMobileSidebar() {
     const sidebar = document.getElementById('sidebarNav');
     const overlay = document.getElementById('sidebarOverlay');
@@ -1536,6 +2008,10 @@ function closeMobileSidebar() {
 // ================= NAVIGATION LOGIC =================
 function showSection(sectionId) {
     closeMobileSidebar();
+    if (sectionId === 'interviews') {
+        document.getElementById('interview-applicant').value = '';
+        document.getElementById('interview-applicant-name').value = '';
+    }
     document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
     document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
 
@@ -1553,8 +2029,10 @@ function showSection(sectionId) {
         'dashboard': 'Dashboard Overview',
         'employees': 'Employee Records Management',
         'accounts': 'User Account Management',
-        'ess': 'My Profile',
+        'settings': 'Settings',
         'applicants': 'Applicant Management',
+        'interviews': 'Interview Management',
+        'interview-schedule': 'Interview Schedule',
         'onboarding': 'New Hire Onboarding',
         'announcements': 'Company Announcements'
     };
@@ -1563,6 +2041,10 @@ function showSection(sectionId) {
 
 function showSectionFromMenu(sectionId) {
     // Programmatically trigger section (for Quick Actions)
+    if (sectionId === 'interviews') {
+        document.getElementById('interview-applicant').value = '';
+        document.getElementById('interview-applicant-name').value = '';
+    }
     document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
     document.querySelectorAll('.sidebar a').forEach(link => link.classList.remove('active'));
     document.getElementById(sectionId).classList.add('active');
@@ -1576,8 +2058,10 @@ function showSectionFromMenu(sectionId) {
         'dashboard': 'Dashboard Overview',
         'employees': 'Employee Records Management',
         'accounts': 'User Account Management',
-        'ess': 'My Profile',
+        'settings': 'Settings',
         'applicants': 'Applicant Management',
+        'interviews': 'Interview Management',
+        'interview-schedule': 'Interview Schedule',
         'onboarding': 'New Hire Onboarding',
         'announcements': 'Company Announcements'
     };
@@ -1680,6 +2164,23 @@ async function loadDashboardStats() {
 }
 
 // ================= ADMIN PROFILE & DROPDOWN =================
+function setThemePreference(theme) {
+    if (theme !== 'light' && theme !== 'dark') return;
+
+    document.documentElement.dataset.theme = theme;
+    try {
+        localStorage.setItem('hrms_admin_theme', theme);
+    } catch (error) {
+        console.warn('Theme preference could not be saved:', error);
+    }
+}
+
+function syncThemePreferenceControl() {
+    const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    const option = document.querySelector(`input[name="theme-choice"][value="${theme}"]`);
+    if (option) option.checked = true;
+}
+
 function toggleProfileDropdown(event) {
     if (event) event.stopPropagation();
     const btn = document.getElementById('profileDropdownBtn');
@@ -1736,13 +2237,13 @@ function loadAdminProfile() {
         roleEl.className = `dropdown-role-badge ${user.role === 'admin' ? 'badge-admin' : 'badge-employee'}`;
     }
 
-    // Profile fields
-    if (document.getElementById('ess-name')) document.getElementById('ess-name').value = user.name || '';
-    if (document.getElementById('ess-email')) document.getElementById('ess-email').value = user.email || '';
+    // Account settings fields
+    if (document.getElementById('settings-name')) document.getElementById('settings-name').value = user.name || '';
+    if (document.getElementById('settings-email')) document.getElementById('settings-email').value = user.email || '';
 }
 
-async function updateAdminProfile() {
-    const name = document.getElementById('ess-name').value.trim();
+async function updateAccountSettings() {
+    const name = document.getElementById('settings-name').value.trim();
 
     if (!name) { alert('Name is required.'); return; }
 
@@ -1758,9 +2259,9 @@ async function updateAdminProfile() {
             localStorage.setItem('hrms_current_user', JSON.stringify(updated));
         }
         loadAdminProfile();
-        alert('Profile updated successfully!');
+        alert('Account settings saved successfully!');
     } catch (err) {
-        alert('Failed to update profile: ' + err.message);
+        alert('Failed to save account settings: ' + err.message);
     }
 }
 
@@ -2086,30 +2587,194 @@ async function deleteEmployee(id) {
 }
 
 // ================= APPLICANT MANAGEMENT =================
+let applicantRecords = [];
+
 async function loadApplicants() {
     const tbody = document.getElementById('applicant-table-body');
     try {
         const applicants = await apiFetch('/applicants');
-        if (!applicants || applicants.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No applicants found.</td></tr>`;
+        applicantRecords = applicants || [];
+        if (applicantRecords.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No applicants found.</td></tr>`;
             return;
         }
-        tbody.innerHTML = applicants.map(app => `
+        tbody.innerHTML = applicantRecords.map(app => `
             <tr>
-                <td><strong>${escapeHtml(app.name)}</strong></td>
-                <td>${escapeHtml(app.position)}</td>
+                <td><button type="button" class="candidate-name-link" onclick="openApplicantDetails(${Number(app.id)})">${escapeHtml(app.name)}</button></td>
+                <td>${escapeHtml(app.position || 'Not specified')}</td>
                 <td>${escapeHtml(formatDate(app.applied_date))}</td>
-                <td>${statusBadge(app.status)}</td>
                 <td>
-                    <button class="btn btn-success btn-sm" onclick="hireApplicant(${app.id})">Hire</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteApplicant(${app.id})">Delete</button>
+                    <button class="btn btn-success btn-sm" onclick="hireApplicant(${Number(app.id)})">Hire</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteApplicant(${Number(app.id)})">Delete</button>
                 </td>
             </tr>
         `).join('');
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:#DC2626;">Failed to load applicants: ${escapeHtml(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color:#DC2626;">Failed to load applicants: ${escapeHtml(err.message)}</td></tr>`;
     }
 }
+
+let applicantDetailsRequest = 0;
+let applicantPreviewUrls = [];
+
+function clearApplicantPreviewUrls() {
+    applicantPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    applicantPreviewUrls = [];
+}
+
+async function openApplicantDetails(id) {
+    const requestId = ++applicantDetailsRequest;
+    clearApplicantPreviewUrls();
+    const modal = document.getElementById('applicantDetailsModal');
+    const content = document.getElementById('applicant-details-content');
+    document.getElementById('applicant-details-title').textContent = 'Applicant Details';
+    content.innerHTML = '<p class="empty-state">Loading submitted information...</p>';
+    modal.classList.add('show');
+
+    let applicant;
+    try {
+        applicant = await apiFetch(`/applicants/${id}`);
+    } catch (error) {
+        if (requestId === applicantDetailsRequest) {
+            content.innerHTML = `<p class="empty-state" style="color:#DC2626;">Unable to load applicant details: ${escapeHtml(error.message)}</p>`;
+        }
+        return;
+    }
+    if (requestId !== applicantDetailsRequest) return;
+
+    document.getElementById('applicant-details-title').textContent = applicant.name || 'Applicant Details';
+    const fields = [
+        ['Position Applied For', applicant.position || 'Not specified'],
+        ['First Name', applicant.first_name],
+        ['Middle Name', applicant.middle_name],
+        ['Surname', applicant.surname],
+        ['Email Address', applicant.email],
+        ['Phone Number', applicant.phone],
+        ['Gender', applicant.gender],
+        ['Date of Birth', applicant.date_of_birth],
+        ['Age', applicant.age],
+        ['Place of Birth', applicant.place_of_birth],
+        ['Civil Status', applicant.civil_status],
+        ['TIN', applicant.tin],
+        ['Home Address', applicant.address],
+        ['Emergency Contact Name', applicant.emergency_contact_name || applicant.emergency_contact],
+        ['Emergency Contact Phone Number', applicant.emergency_contact_phone],
+        ['Applied Date', formatDate(applicant.applied_date)]
+    ];
+    const fieldsMarkup = fields.map(([label, value]) => `
+        <div class="candidate-detail"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || 'Not provided')}</strong></div>
+    `).join('');
+    const photosMarkup = `
+        <div class="candidate-photo-preview"><span>Identification Document</span><div class="candidate-photo-frame" id="applicant-id-photo-preview">${applicant.id_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+        <div class="candidate-photo-preview"><span>2×2 Picture</span><div class="candidate-photo-frame square" id="applicant-2x2-photo-preview">${applicant.id_picture_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+        <div class="candidate-photo-preview"><span>Resume / ID Photo</span><div class="candidate-photo-frame" id="applicant-resume-preview">${applicant.resume_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+    `;
+    content.innerHTML = `
+        <div class="candidate-details-grid">${fieldsMarkup}</div>
+        <div class="candidate-document-previews">${photosMarkup}</div>
+        <div class="candidate-document-actions">
+            <button type="button" class="btn btn-sm" onclick="openApplicantPhotoPreview('applicant-id-photo-preview', 'Identification Document')" ${applicant.id_photo_path ? '' : 'disabled'}>Identification Document</button>
+            <button type="button" class="btn btn-sm" onclick="openApplicantPhotoPreview('applicant-2x2-photo-preview', '2×2 Picture')" ${applicant.id_picture_path ? '' : 'disabled'}>2×2 Picture</button>
+            <button type="button" class="btn btn-sm" onclick="openApplicantPhotoPreview('applicant-resume-preview', 'Resume / ID Photo')" ${applicant.resume_path ? '' : 'disabled'}>Resume / ID Photo</button>
+        </div>
+        <div class="candidate-decision-actions">
+            <button type="button" class="btn btn-danger" onclick="recordApplicantDecision(${Number(applicant.id)}, 'Rejected')">Not Qualified</button>
+            <button type="button" class="btn btn-primary" onclick="recordApplicantDecision(${Number(applicant.id)}, 'Interviewing')"><i class="fa-solid fa-arrow-right"></i> Proceed to Interview</button>
+        </div>
+    `;
+
+    const previewTasks = [];
+    if (applicant.id_photo_path) previewTasks.push(loadApplicantPhotoPreview(id, 'id-photo', 'applicant-id-photo-preview', 'Identification Document', requestId));
+    if (applicant.id_picture_path) previewTasks.push(loadApplicantPhotoPreview(id, '2x2-photo', 'applicant-2x2-photo-preview', '2×2 Picture', requestId));
+    if (applicant.resume_path) previewTasks.push(loadApplicantPhotoPreview(id, 'resume', 'applicant-resume-preview', 'Resume / ID Photo', requestId));
+    await Promise.all(previewTasks);
+}
+
+async function loadApplicantPhotoPreview(id, documentType, targetId, label, requestId) {
+    try {
+        const response = await fetch(window.getApiUrl(`/applicants/${id}/${documentType}`), { headers: authHeaders() });
+        if (!response.ok) throw new Error('Image unavailable');
+        const imageUrl = URL.createObjectURL(await response.blob());
+        if (requestId !== applicantDetailsRequest || !document.getElementById('applicantDetailsModal').classList.contains('show')) {
+            URL.revokeObjectURL(imageUrl);
+            return;
+        }
+        applicantPreviewUrls.push(imageUrl);
+        const preview = document.getElementById(targetId);
+        if (!preview) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'candidate-photo-zoom';
+        button.setAttribute('aria-label', `View larger ${label}`);
+        const image = document.createElement('img');
+        image.src = imageUrl;
+        image.alt = label;
+        button.appendChild(image);
+        button.addEventListener('click', () => openApplicantPhotoZoom(imageUrl, label));
+        preview.replaceChildren(button);
+    } catch (error) {
+        const preview = document.getElementById(targetId);
+        if (requestId === applicantDetailsRequest && preview) preview.textContent = 'Image unavailable';
+    }
+}
+
+function openApplicantPhotoPreview(targetId, label) {
+    const image = document.querySelector(`#${targetId} img`);
+    if (image) openApplicantPhotoZoom(image.src, label);
+}
+
+function openApplicantPhotoZoom(imageUrl, label) {
+    const lightbox = document.getElementById('applicantPhotoLightbox');
+    const image = document.getElementById('applicantPhotoZoomImage');
+    image.src = imageUrl;
+    image.alt = label;
+    lightbox.classList.add('show');
+    lightbox.setAttribute('aria-hidden', 'false');
+}
+
+function closeApplicantPhotoZoom() {
+    const lightbox = document.getElementById('applicantPhotoLightbox');
+    const image = document.getElementById('applicantPhotoZoomImage');
+    lightbox.classList.remove('show');
+    lightbox.setAttribute('aria-hidden', 'true');
+    image.removeAttribute('src');
+    image.alt = '';
+}
+
+function closeApplicantDetails() {
+    closeApplicantPhotoZoom();
+    document.getElementById('applicantDetailsModal').classList.remove('show');
+    applicantDetailsRequest++;
+    clearApplicantPreviewUrls();
+}
+
+async function recordApplicantDecision(id, decision) {
+    if (decision === 'Rejected' && !confirm('Mark this candidate as Not Qualified?')) return;
+    try {
+        await apiFetch(`/applicants/${id}/decision`, { method: 'POST', body: JSON.stringify({ decision }) });
+        if (decision === 'Interviewing') {
+            const applicant = applicantRecords.find(record => Number(record.id) === Number(id));
+            closeApplicantDetails();
+            showSection('interviews');
+            document.getElementById('interview-applicant').value = String(id);
+            document.getElementById('interview-applicant-name').value = applicant ? applicant.name : '';
+            document.getElementById('interview-date').focus();
+        } else {
+            closeApplicantDetails();
+            await loadApplicants();
+            alert('Candidate marked as Not Qualified.');
+        }
+    } catch (error) {
+        alert('Unable to save applicant decision: ' + error.message);
+    }
+}
+
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        const lightbox = document.getElementById('applicantPhotoLightbox');
+        if (lightbox && lightbox.classList.contains('show')) closeApplicantPhotoZoom();
+    }
+});
 
 function calculateAppAge() {
     const dobStr = document.getElementById('app-dob').value;
@@ -2238,6 +2903,96 @@ async function deleteApplicant(id) {
 }
 
 // ================= ONBOARDING MODULE =================
+function setInterviewDateMinimum() {
+    const localToday = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    document.getElementById('interview-date').min = localToday;
+}
+
+setInterviewDateMinimum();
+
+document.getElementById('interview-quick-location').addEventListener('change', (event) => {
+    if (event.target.value) document.getElementById('interview-location').value = event.target.value;
+});
+
+function formatInterviewDateTime(value) {
+    if (!value) return '';
+    const date = new Date(value.replace(' ', 'T'));
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+async function loadInterviews() {
+    const tbody = document.getElementById('interview-table-body');
+    if (!tbody) return;
+    try {
+        const interviews = await apiFetch('/interviews');
+        if (!interviews || interviews.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No interviews scheduled.</td></tr>';
+            return;
+        }
+        const statuses = ['Scheduled', 'Completed', 'Cancelled', 'No Show'];
+        tbody.innerHTML = interviews.map(interview => `
+            <tr>
+                <td>${escapeHtml(interview.applicant_name)}</td>
+                <td>${escapeHtml(interview.applicant_position || 'Not specified')}</td>
+                <td>${escapeHtml(formatInterviewDateTime(interview.scheduled_at))}</td>
+                <td>${escapeHtml(interview.interviewer)}</td>
+                <td>${escapeHtml(interview.location || 'Not specified')}</td>
+                <td>${escapeHtml(interview.notes || 'Not provided')}</td>
+                <td class="interview-status-cell">
+                    <select id="interview-status-${Number(interview.id)}" class="form-control">
+                        ${statuses.map(status => `<option value="${status}" ${interview.status === status ? 'selected' : ''}>${status}</option>`).join('')}
+                    </select>
+                    <button class="btn btn-sm btn-primary" style="margin-top:6px;" onclick="updateInterviewStatus(${Number(interview.id)})">Update</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:#DC2626;">Failed to load interviews: ${escapeHtml(error.message)}</td></tr>`;
+    }
+}
+
+async function scheduleInterview(event) {
+    event.preventDefault();
+    const form = document.getElementById('interview-form');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const date = document.getElementById('interview-date').value;
+    const time = document.getElementById('interview-time').value;
+    const payload = {
+        applicant_id: document.getElementById('interview-applicant').value,
+        scheduled_at: date && time ? `${date}T${time}` : '',
+        interviewer: document.getElementById('interview-interviewer').value.trim(),
+        location: document.getElementById('interview-location').value.trim(),
+        notes: document.getElementById('interview-notes').value.trim()
+    };
+    if (!payload.applicant_id) {
+        alert('Open an applicant and choose Proceed to Interview before scheduling.');
+        return;
+    }
+    submitButton.disabled = true;
+    try {
+        const result = await apiFetch('/interviews', { method: 'POST', body: JSON.stringify(payload) });
+        form.reset();
+        await loadInterviews();
+        alert(result.email_sent
+            ? 'Interview scheduled. All interview details were emailed to the applicant.'
+            : 'Interview scheduled, but the email could not be sent. Check the applicant email address and SMTP settings.');
+    } catch (error) {
+        alert('Failed to schedule interview: ' + error.message);
+    } finally {
+        submitButton.disabled = false;
+    }
+}
+
+async function updateInterviewStatus(id) {
+    const status = document.getElementById(`interview-status-${id}`).value;
+    try {
+        await apiFetch(`/interviews/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+        await loadInterviews();
+    } catch (error) {
+        alert('Failed to update interview status: ' + error.message);
+    }
+}
+
 async function loadOnboardingEmployees() {
     try {
         const employees = await apiFetch('/employees');
@@ -2457,6 +3212,7 @@ async function autoRefreshData() {
             loadUserAccounts(),
             loadEmployees(),
             loadApplicants(),
+            loadInterviews(),
             loadAdminAnnouncements(),
             loadOnboarding()
         ]);
@@ -2583,11 +3339,14 @@ async function deleteAnnouncement(id) {
 window.onload = function() {
     protectPage('admin');
 
+    syncSidebarCollapseControl();
+    syncThemePreferenceControl();
     loadAdminProfile();
     loadDashboardStats();
     loadUserAccounts();
     loadEmployees();
 loadApplicants();
+        loadInterviews();
     loadAdminAnnouncements();
     loadOnboardingEmployees();
     loadOnboarding();

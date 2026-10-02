@@ -89,7 +89,7 @@ function requireAuth() {
     if (!$token) {
         respondError("Access denied. No token provided.", 401);
     }
-    $decoded = PHPJWT::decode($token, JWT_SECRET);
+    $decoded = PHPJWT::decode($token, getJwtSecret());
     if (!$decoded) {
         respondError("Invalid or expired token.", 403);
     }

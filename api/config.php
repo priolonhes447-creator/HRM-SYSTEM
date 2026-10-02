@@ -6,9 +6,7 @@
 // HTTP Security & CORS Response Headers
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: SAMEORIGIN");
-header("X-XSS-Protection: 1; mode=block");
 header("Referrer-Policy: strict-origin-when-cross-origin");
-header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Content-Type: application/json; charset=UTF-8");
@@ -39,6 +37,13 @@ function loadEnv($path) {
 loadEnv(__DIR__ . '/../.env');
 loadEnv(__DIR__ . '/../backend/.env');
 
+$allowedOrigin = trim(getenv('CORS_ALLOWED_ORIGIN') ?: '');
+$requestOrigin = trim($_SERVER['HTTP_ORIGIN'] ?? '');
+if ($allowedOrigin !== '' && $requestOrigin !== '' && hash_equals($allowedOrigin, $requestOrigin)) {
+    header('Access-Control-Allow-Origin: ' . $allowedOrigin);
+    header('Vary: Origin');
+}
+
 $databaseUrl = getenv('DATABASE_URL') ?: '';
 $databaseParts = $databaseUrl ? parse_url($databaseUrl) : false;
 $databasePath = is_array($databaseParts) ? ltrim($databaseParts['path'] ?? '', '/') : '';
@@ -49,7 +54,9 @@ define('DB_NAME', getenv('DB_NAME') ?: getenv('DB_DATABASE') ?: getenv('PGDATABA
 define('DB_USER', getenv('DB_USER') ?: getenv('DB_USERNAME') ?: getenv('PGUSER') ?: (is_array($databaseParts) ? urldecode($databaseParts['user'] ?? 'postgres') : 'postgres'));
 define('DB_PASS', getenv('DB_PASS') ?: getenv('DB_PASSWORD') ?: getenv('PGPASSWORD') ?: (is_array($databaseParts) ? urldecode($databaseParts['pass'] ?? '') : ''));
 define('DB_SSLMODE', getenv('DB_SSLMODE') ?: 'prefer');
-define('JWT_SECRET', getenv('JWT_SECRET') ?: 'hrms_php_supabase_secret_key_2026');
+define('APP_ENV', getenv('APP_ENV') ?: 'production');
+define('JWT_SECRET', getenv('JWT_SECRET') ?: '');
+define('JWT_EXPIRES_IN', max(300, (int)(getenv('JWT_EXPIRES_IN') ?: 86400)));
 define('MAIL_HOST', getenv('MAIL_HOST') ?: '');
 define('MAIL_PORT', (int)(getenv('MAIL_PORT') ?: 587));
 define('MAIL_USERNAME', getenv('MAIL_USERNAME') ?: '');
@@ -84,6 +91,13 @@ function getDBConnection() {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
     return $pdo;
+}
+
+function getJwtSecret() {
+    if (strlen(JWT_SECRET) < 32 || JWT_SECRET === 'hrms_php_supabase_secret_key_2026') {
+        throw new RuntimeException('JWT_SECRET is missing or insecure. Configure a random secret of at least 32 characters.');
+    }
+    return JWT_SECRET;
 }
 
 // JSON Output Helper Functions

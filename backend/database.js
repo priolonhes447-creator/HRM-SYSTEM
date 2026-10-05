@@ -4,6 +4,9 @@ const bcrypt = require('bcryptjs');
 
 const DB_PATH = path.join(__dirname, 'hrms.db');
 const db = new Database(DB_PATH);
+db.function('normalize_person_name', { deterministic: true }, value =>
+  String(value || '').trim().replace(/\s+/gu, ' ').toLowerCase()
+);
 
 // Enable WAL mode for better performance
 db.pragma('journal_mode = WAL');
@@ -43,6 +46,8 @@ CREATE TABLE IF NOT EXISTS employees (
       last_name TEXT DEFAULT '',
       first_name TEXT DEFAULT '',
       middle_name TEXT DEFAULT '',
+      comments TEXT DEFAULT '',
+      certificate_received_at TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -57,6 +62,7 @@ CREATE TABLE IF NOT EXISTS employees (
       phone TEXT DEFAULT '',
       applied_date TEXT NOT NULL,
       status TEXT DEFAULT 'New' CHECK(status IN ('New','Interviewing','Hired','Rejected')),
+      comments TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -138,7 +144,7 @@ CREATE TABLE IF NOT EXISTS announcement_reads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       employee_id INTEGER NOT NULL,
       task TEXT NOT NULL,
-      status TEXT DEFAULT 'Pending' CHECK(status IN ('Pending','In Progress','Completed')),
+      status TEXT DEFAULT 'Pending' CHECK(status IN ('Pending','Completed')),
       due_date TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (employee_id) REFERENCES employees(id)
@@ -164,6 +170,8 @@ addColumnIfMissing('phone', 'TEXT', "''");
   addColumnIfMissing('last_name', 'TEXT', "''");
   addColumnIfMissing('first_name', 'TEXT', "''");
   addColumnIfMissing('middle_name', 'TEXT', "''");
+  addColumnIfMissing('comments', 'TEXT', "''");
+  addColumnIfMissing('certificate_received_at', 'TEXT', 'NULL');
   addColumnIfMissing('bank_name', 'TEXT', "''");
   addColumnIfMissing('bank_account', 'TEXT', "''");
 
@@ -185,6 +193,93 @@ addColumnIfMissing('phone', 'TEXT', "''");
   addAppColumnIfMissing('tin', 'TEXT', "''");
   addAppColumnIfMissing('civil_status', 'TEXT', "''");
   addAppColumnIfMissing('emergency_contact', 'TEXT', "''");
+  addAppColumnIfMissing('comments', 'TEXT', "''");
+
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS employees_unique_person_name_insert
+    BEFORE INSERT ON employees
+    WHEN TRIM(COALESCE(NEW.name, '')) <> ''
+    BEGIN
+      SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM employees existing
+        WHERE existing.id <> COALESCE(NEW.id, -1)
+          AND normalize_person_name(existing.name) = normalize_person_name(NEW.name)
+      ) OR EXISTS (
+        SELECT 1 FROM applicants existing
+        WHERE normalize_person_name(existing.name) = normalize_person_name(NEW.name)
+          AND NOT (
+            existing.status = 'Hired'
+            AND TRIM(COALESCE(existing.email, '')) <> ''
+            AND LOWER(TRIM(existing.email)) = LOWER(TRIM(COALESCE(NEW.email, '')))
+          )
+      ) THEN RAISE(ABORT, 'DUPLICATE_PERSON_NAME') END;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS employees_unique_person_name_update
+    BEFORE UPDATE OF name, email ON employees
+    WHEN TRIM(COALESCE(NEW.name, '')) <> ''
+    BEGIN
+      SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM employees existing
+        WHERE existing.id <> COALESCE(NEW.id, -1)
+          AND normalize_person_name(existing.name) = normalize_person_name(NEW.name)
+      ) OR EXISTS (
+        SELECT 1 FROM applicants existing
+        WHERE normalize_person_name(existing.name) = normalize_person_name(NEW.name)
+          AND NOT (
+            existing.status = 'Hired'
+            AND TRIM(COALESCE(existing.email, '')) <> ''
+            AND LOWER(TRIM(existing.email)) = LOWER(TRIM(COALESCE(NEW.email, '')))
+          )
+      ) THEN RAISE(ABORT, 'DUPLICATE_PERSON_NAME') END;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS applicants_unique_person_name_insert
+    BEFORE INSERT ON applicants
+    WHEN TRIM(COALESCE(NEW.name, '')) <> ''
+    BEGIN
+      SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM applicants existing
+        WHERE existing.id <> COALESCE(NEW.id, -1)
+          AND normalize_person_name(existing.name) = normalize_person_name(NEW.name)
+      ) OR EXISTS (
+        SELECT 1 FROM employees existing
+        WHERE normalize_person_name(existing.name) = normalize_person_name(NEW.name)
+          AND NOT (
+            NEW.status = 'Hired'
+            AND TRIM(COALESCE(NEW.email, '')) <> ''
+            AND LOWER(TRIM(existing.email)) = LOWER(TRIM(NEW.email))
+          )
+      ) THEN RAISE(ABORT, 'DUPLICATE_PERSON_NAME') END;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS applicants_unique_person_name_update
+    BEFORE UPDATE OF name, email, status ON applicants
+    WHEN TRIM(COALESCE(NEW.name, '')) <> ''
+    BEGIN
+      SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM applicants existing
+        WHERE existing.id <> COALESCE(NEW.id, -1)
+          AND normalize_person_name(existing.name) = normalize_person_name(NEW.name)
+      ) OR EXISTS (
+        SELECT 1 FROM employees existing
+        WHERE normalize_person_name(existing.name) = normalize_person_name(NEW.name)
+          AND NOT (
+            NEW.status = 'Hired'
+            AND TRIM(COALESCE(NEW.email, '')) <> ''
+            AND LOWER(TRIM(existing.email)) = LOWER(TRIM(NEW.email))
+          )
+      ) THEN RAISE(ABORT, 'DUPLICATE_PERSON_NAME') END;
+    END;
+  `);
+
+  // Migration for legacy onboarding task labels
+  db.prepare(
+    "UPDATE onboarding_tasks SET task = 'Complete Required Initial Training' WHERE task = '30-Day Check-in & Feedback Session'"
+  ).run();
+  db.prepare(
+    "UPDATE onboarding_tasks SET status = 'Pending' WHERE status NOT IN ('Pending', 'Completed')"
+  ).run();
 
   // Seed default users if table is empty
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
@@ -241,13 +336,17 @@ function ensureDefaultAccountsExist() {
      VALUES (?, ?, ?, ?, ?, 'Active')`
   );
 
-  const admin = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@gmail.com');
+  const admin = db.prepare('SELECT id FROM users WHERE employee_id = ?').get('ADMIN001');
   if (!admin) {
-    insertUser.run('admin@gmail.com', bcrypt.hashSync('admin123', salt), 'admin', 'Admin User', 'HR Manager', 'Human Resources', 'ADMIN001');
+    insertUser.run('phnhes@gmail.com', bcrypt.hashSync('admin123', salt), 'admin', 'Human Resources', 'HR Manager', 'Human Resources', 'ADMIN001');
+  } else {
+    db.prepare('UPDATE users SET email = ? WHERE employee_id = ?').run('phnhes@gmail.com', 'ADMIN001');
   }
-  const adminEmp = db.prepare('SELECT id FROM employees WHERE employee_id = ? OR LOWER(email) = LOWER(?)').get('ADMIN001', 'admin@gmail.com');
+  const adminEmp = db.prepare('SELECT id FROM employees WHERE employee_id = ?').get('ADMIN001');
   if (!adminEmp) {
-    insertEmp.run('ADMIN001', 'Admin User', 'admin@gmail.com', 'Human Resources', 'HR Manager');
+    insertEmp.run('ADMIN001', 'Human Resources', 'phnhes@gmail.com', 'Human Resources', 'HR Manager');
+  } else {
+    db.prepare('UPDATE employees SET email = ? WHERE employee_id = ?').run('phnhes@gmail.com', 'ADMIN001');
   }
 
   const user = db.prepare('SELECT id FROM users WHERE email = ?').get('user@gmail.com');
@@ -270,7 +369,7 @@ function seedDefaultData() {
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
 
-  insertUser.run('admin@gmail.com', adminPassword, 'admin', 'Admin User', 'HR Manager', 'Human Resources', 'ADMIN001');
+  insertUser.run('phnhes@gmail.com', adminPassword, 'admin', 'Human Resources', 'HR Manager', 'Human Resources', 'ADMIN001');
   insertUser.run('user@gmail.com', userPassword, 'employee', 'Regular User', 'Software Engineer', 'IT', 'EMP004');
 
   // Seed sample employees (including accounts for default users to maintain synchronization)
@@ -279,7 +378,7 @@ function seedDefaultData() {
        phone, address, date_of_birth, gender, emergency_contact)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
-  insertEmp.run('ADMIN001', 'Admin User', 'admin@gmail.com', 'Human Resources', 'HR Manager', 'Active', '0917-000-0000', '1 HR Way, Manila', '1985-01-01', 'Male', '0917-999-0000');
+  insertEmp.run('ADMIN001', 'Human Resources', 'phnhes@gmail.com', 'Human Resources', 'HR Manager', 'Active', '0917-000-0000', '1 HR Way, Manila', '1985-01-01', 'Male', '0917-999-0000');
   insertEmp.run('EMP004', 'Regular User', 'user@gmail.com', 'IT', 'Software Engineer', 'Active', '0917-444-4444', '4 Tech St, Manila', '1992-04-04', 'Male', '0917-999-0004');
   insertEmp.run('EMP001', 'Alice Johnson', 'alice@company.com', 'IT', 'Developer', 'Active', '0917-111-1111', '123 Tech St, Manila', '1990-05-12', 'Female', '0917-999-0001');
   insertEmp.run('EMP002', 'Bob Smith', 'bob@company.com', 'Sales', 'Manager', 'Active', '0918-222-2222', '456 Sales Ave, Quezon City', '1988-11-23', 'Male', '0918-999-0002');
@@ -298,8 +397,8 @@ function seedDefaultData() {
     `INSERT INTO announcements (title, content, author)
      VALUES (?, ?, ?)`
   );
-  insertAnn.run('Upcoming Town Hall Meeting', 'Join us this Friday at 3:00 PM for the quarterly review. Pizza will be served!', 'Admin User');
-  insertAnn.run('New Office Hours', 'Effective next Monday, the office will open at 8:30 AM. Please adjust your schedules accordingly.', 'Admin User');
+  insertAnn.run('Upcoming Town Hall Meeting', 'Join us this Friday at 3:00 PM for the quarterly review. Pizza will be served!', 'Human Resources');
+  insertAnn.run('New Office Hours', 'Effective next Monday, the office will open at 8:30 AM. Please adjust your schedules accordingly.', 'Human Resources');
   insertAnn.run('Welcome to Our New Team Members', 'Please join us in welcoming the new hires joining the Engineering and Sales teams this month!', 'HR');
 }
 
@@ -438,6 +537,15 @@ function updateUserProfile(id, profile) {
 }
 
 // Change a user's password (works for any logged-in user). Returns true on success.
+function generateTemporaryPassword(length = 12) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return password;
+}
+
 function changePassword(userId, newPassword) {
   const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
   if (!user) return false;
@@ -505,7 +613,7 @@ function updateEmployee(id, emp) {
     `UPDATE employees SET
        employee_id = ?, name = ?, email = ?, department = ?, role = ?, status = ?,
        phone = ?, address = ?, date_of_birth = ?, gender = ?, emergency_contact = ?,
-       age = ?, place_of_birth = ?, tin = ?, civil_status = ?, last_name = ?, first_name = ?, middle_name = ?
+       age = ?, place_of_birth = ?, tin = ?, civil_status = ?, last_name = ?, first_name = ?, middle_name = ?, comments = ?
      WHERE id = ?`
   ).run(
     emp.employee_id || existing.employee_id,
@@ -526,6 +634,7 @@ function updateEmployee(id, emp) {
     emp.last_name !== undefined ? emp.last_name : existing.last_name,
     emp.first_name !== undefined ? emp.first_name : existing.first_name,
     emp.middle_name !== undefined ? emp.middle_name : existing.middle_name,
+    emp.comments !== undefined ? emp.comments : existing.comments,
     id
   );
 
@@ -633,7 +742,7 @@ const DEFAULT_ONBOARDING_TASKS = [
   { task: 'Orientation & Company Policy Review', dueOffset: 3 },
   { task: 'Department Introductions & Buddy Assigned', dueOffset: 4 },
   { task: 'Role-Specific Training', dueOffset: 7 },
-  { task: '30-Day Check-in & Feedback Session', dueOffset: 30 }
+  { task: 'Complete Required Initial Training', dueOffset: 30 }
 ];
 
 // Start a standard onboarding checklist for an employee (by employees.id)
@@ -765,9 +874,6 @@ function getOnboardingStats() {
   const completedTasks = db.prepare(
     "SELECT COUNT(*) as count FROM onboarding_tasks WHERE status = 'Completed'"
   ).get().count;
-  const inProgressTasks = db.prepare(
-    "SELECT COUNT(*) as count FROM onboarding_tasks WHERE status = 'In Progress'"
-  ).get().count;
 
   // Average progress across employees who have onboarding tasks
   let averageProgress = 0;
@@ -782,90 +888,88 @@ function getOnboardingStats() {
     activeOnboardings,
     totalTasks,
     completedTasks,
-    inProgressTasks,
     averageProgress
   };
 }
 
 function hireApplicant(id) {
-  const app = db.prepare('SELECT * FROM applicants WHERE id = ?').get(id);
-  if (!app) return null;
+  return db.transaction(() => {
+    const app = db.prepare('SELECT * FROM applicants WHERE id = ?').get(id);
+    if (!app) return null;
 
-// Generate a unique employee ID (must not collide with existing employees
-  // OR users, since hire also creates a portal login with the same employee_id)
-  let empId = '';
-  let empSeq = db.prepare('SELECT COUNT(*) as count FROM employees').get().count;
-  do {
-    empSeq++;
-    empId = 'EMP' + String(empSeq).padStart(3, '0');
-  } while (
-    db.prepare('SELECT COUNT(*) as count FROM employees WHERE employee_id = ?').get(empId).count > 0 ||
-    db.prepare('SELECT COUNT(*) as count FROM users WHERE employee_id = ?').get(empId).count > 0
-  );
+    // Generate a unique employee ID (must not collide with existing employees
+    // or users, since hiring also creates a portal login).
+    let empId = '';
+    let empSeq = db.prepare('SELECT COUNT(*) as count FROM employees').get().count;
+    do {
+      empSeq++;
+      empId = 'EMP' + String(empSeq).padStart(3, '0');
+    } while (
+      db.prepare('SELECT COUNT(*) as count FROM employees WHERE employee_id = ?').get(empId).count > 0 ||
+      db.prepare('SELECT COUNT(*) as count FROM users WHERE employee_id = ?').get(empId).count > 0
+    );
 
-  // Ensure a unique email for the employee record
-  let email = (app.email || '').trim();
-  if (!email) {
-    // Build from name if possible, e.g. "John Doe" -> "johndoe@company.com"
-    const slug = (app.name || 'employee').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 30) || 'employee';
-    email = `${slug}@company.com`;
-  }
-  // If that email already exists, append a numeric suffix
-  let candidate = email;
-  let suffix = 1;
-  while (db.prepare('SELECT COUNT(*) as count FROM employees WHERE email = ?').get(candidate).count > 0) {
-    const parts = email.split('@');
-    candidate = `${parts[0]}${suffix}@${parts[1]}`;
-    suffix++;
-  }
+    // Ensure a unique email for the employee record.
+    let email = (app.email || '').trim();
+    if (!email) {
+      const slug = (app.name || 'employee').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 30) || 'employee';
+      email = `${slug}@company.com`;
+    }
+    let candidate = email;
+    let suffix = 1;
+    while (db.prepare('SELECT COUNT(*) as count FROM employees WHERE email = ?').get(candidate).count > 0) {
+      const parts = email.split('@');
+      candidate = `${parts[0]}${suffix}@${parts[1]}`;
+      suffix++;
+    }
 
-// Add as employee with full applicant details transferred
-  const empResult = db.prepare(
-    `INSERT INTO employees (
-      employee_id, name, email, department, role, status,
-      phone, address, date_of_birth, gender, emergency_contact,
-      age, place_of_birth, tin, civil_status,
-      last_name, first_name, middle_name
-    ) VALUES (?, ?, ?, ?, ?, 'Onboarding', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    empId,
-    app.name,
-    candidate,
-    app.department || 'General',
-    app.position || '',
-    app.phone || '',
-    app.address || '',
-    app.date_of_birth || '',
-    app.gender || '',
-    app.emergency_contact || '',
-    app.age || 0,
-    app.place_of_birth || '',
-    app.tin || '',
-    app.civil_status || '',
-    app.surname || app.last_name || '',
-    app.first_name || '',
-    app.middle_name || ''
-  );
+    db.prepare("UPDATE applicants SET status = 'Hired', email = ? WHERE id = ?").run(candidate, id);
 
-  // Automatically start the standard onboarding checklist for the new hire
-  startOnboarding(empResult.lastInsertRowid);
+    const empResult = db.prepare(
+      `INSERT INTO employees (
+        employee_id, name, email, department, role, status,
+        phone, address, date_of_birth, gender, emergency_contact,
+        age, place_of_birth, tin, civil_status,
+        last_name, first_name, middle_name
+      ) VALUES (?, ?, ?, ?, ?, 'Onboarding', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      empId,
+      app.name,
+      candidate,
+      app.department || 'General',
+      app.position || '',
+      app.phone || '',
+      app.address || '',
+      app.date_of_birth || '',
+      app.gender || '',
+      app.emergency_contact || '',
+      app.age || 0,
+      app.place_of_birth || '',
+      app.tin || '',
+      app.civil_status || '',
+      app.surname || app.last_name || '',
+      app.first_name || '',
+      app.middle_name || ''
+    );
 
-  // INTERCONNECT: create a portal login account for the new hire so they can
-  // access the employee portal immediately (default password; change on first login).
-  const userExists = db.prepare('SELECT id FROM users WHERE email = ?').get(candidate);
-  if (!userExists) {
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync('changeme123', salt);
-    db.prepare(
-      `INSERT INTO users (email, password, role, name, position, department, employee_id)
-       VALUES (?, ?, 'employee', ?, ?, 'General', ?)`
-    ).run(candidate, hashedPassword, app.name, app.position, empId);
-  }
+    startOnboarding(empResult.lastInsertRowid);
 
-  // Remove from applicants
-  db.prepare('DELETE FROM applicants WHERE id = ?').run(id);
+    const userExists = db.prepare('SELECT id FROM users WHERE email = ?').get(candidate);
+    let temporaryPassword;
+    if (!userExists) {
+      temporaryPassword = generateTemporaryPassword();
+      const salt = bcrypt.genSaltSync(10);
+      const hashedPassword = bcrypt.hashSync(temporaryPassword, salt);
+      db.prepare(
+        `INSERT INTO users (email, password, role, name, position, department, employee_id)
+         VALUES (?, ?, 'employee', ?, ?, 'General', ?)`
+      ).run(candidate, hashedPassword, app.name, app.position, empId);
+    }
 
-  return { employee_id: empId, name: app.name, email: candidate };
+    db.prepare('DELETE FROM applicants WHERE id = ?').run(id);
+
+    return { employee_id: empId, name: app.name, email: candidate, ...(temporaryPassword ? { temporary_password: temporaryPassword } : {}) };
+  })();
 }
 
 function deleteApplicant(id) {
@@ -1237,6 +1341,7 @@ function generateCertificateOfEmployment(userId) {
   if (!user) throw new Error('User not found');
 
   const todayStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const department = String(user.department || '').trim();
 
   return {
     certificateNo: `COE-${user.employee_id || user.id}-${Date.now().toString().slice(-4)}`,
@@ -1244,9 +1349,9 @@ function generateCertificateOfEmployment(userId) {
     employeeName: user.name,
     employeeId: user.employee_id || 'N/A',
     position: user.position || 'Staff',
-    department: user.department || 'General',
+    department: !department || department.toLowerCase() === 'general' ? 'Human Resources' : department,
     status: 'Active',
-    companyName: 'Human Resources Management System Inc.',
+    companyName: 'Toursphere',
     signatory: 'HR Director / Personnel Department'
   };
 }
@@ -1336,4 +1441,3 @@ addOnboardingTask,
   getBenefitsForUser,
   getPerformanceForUser
 };
-

@@ -17,11 +17,19 @@ Options -Indexes
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{HTTPS} == 'on'"
+
+    # Prevent stale role-aware navigation scripts and dashboard markup after deployments.
+    <FilesMatch "(?i)\.(?:html|js)$">
+        Header always set Cache-Control "no-cache, no-store, must-revalidate"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
+        Header unset ETag
+        Header unset Last-Modified
+    </FilesMatch>
 </IfModule>
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /
 
     # These directories are not public web entry points.
     RewriteRule ^(?:backend|vendor|\.git|\.vscode)(?:/|$) - [F,L,NC]

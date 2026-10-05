@@ -111,7 +111,7 @@ async function main() {
     employee_id: empId,
     task: 'Custom Background Check',
     due_date: new Date().toISOString().split('T')[0],
-    status: 'In Progress'
+    status: 'Pending'
   }, adminToken);
   check('custom task added', res.status === 201 && res.data.task, res.data);
 

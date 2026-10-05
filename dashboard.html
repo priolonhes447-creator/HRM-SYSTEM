@@ -7,9 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <!-- Using FontAwesome for Icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<!-- AI Assistant Stylesheet -->
-<link rel="stylesheet" href="ai-assistant.css">
-
 <script>
 try {
     document.documentElement.dataset.theme = localStorage.getItem('hrms_admin_theme') === 'dark' ? 'dark' : 'light';
@@ -65,28 +62,40 @@ body{ background:var(--background); color:var(--text); display:flex; min-height:
     background: white;
     border-right: 1px solid var(--border);
     position: fixed;
-    height: 100%;
-    overflow-y: auto;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     z-index: 100;
     transition: width .22s ease;
 }
 
-/* Slim scrollbar for the sidebar so nav items are always reachable */
-.sidebar::-webkit-scrollbar {
+/* Keep the brand fixed while allowing the navigation modules to scroll. */
+.sidebar-navigation {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #D1D5DB transparent;
+}
+
+.sidebar-navigation::-webkit-scrollbar {
     width: 6px;
 }
-.sidebar::-webkit-scrollbar-track {
+.sidebar-navigation::-webkit-scrollbar-track {
     background: transparent;
 }
-.sidebar::-webkit-scrollbar-thumb {
+.sidebar-navigation::-webkit-scrollbar-thumb {
     background: #D1D5DB;
     border-radius: 3px;
 }
-.sidebar::-webkit-scrollbar-thumb:hover {
+.sidebar-navigation::-webkit-scrollbar-thumb:hover {
     background: #9CA3AF;
 }
 
 .brand {
+    flex: 0 0 auto;
     min-height: 84px;
     padding: 15px 25px;
     border-bottom: 1px solid var(--border);
@@ -192,6 +201,192 @@ header{
 }
 
 .user-info { display: flex; align-items: center; gap: 15px; }
+
+/* Header actions: notification bell + profile dropdown */
+.header-actions { display: flex; align-items: center; gap: 12px; }
+
+.notification-bell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--surface-muted);
+    color: var(--text);
+    font-size: 17px;
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+
+.notification-bell:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 10px;
+    background: var(--danger);
+    color: #FFFFFF;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 0 0 2px var(--card);
+}
+
+.notification-badge.show { display: flex; }
+
+/* Notification dropdown panel */
+.notification-container { position: relative; display: flex; align-items: center; }
+
+.notification-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 340px;
+    max-width: calc(100vw - 24px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    padding: 8px;
+    display: none;
+    z-index: 1000;
+    animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notification-panel.show { display: block; }
+
+.notification-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.notification-panel-header strong {
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.notification-panel-count {
+    padding: 2px 9px;
+    border-radius: 12px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.notification-list {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    display: flex;
+    gap: 11px;
+    width: 100%;
+    padding: 11px 12px;
+    border: none;
+    border-radius: 7px;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.notification-item:hover { background: var(--surface-hover); }
+
+.notification-item-icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    border-radius: 50%;
+    background: #EAF4F1;
+    color: var(--primary);
+    font-size: 13px;
+}
+
+.notification-item-body { min-width: 0; flex: 1; }
+
+.notification-item-title {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.notification-item-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.notification-item-time {
+    display: block;
+    margin-top: 5px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.notification-item.unread { background: #F3F8FF; }
+.notification-item.unread .notification-item-title::after {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    vertical-align: middle;
+}
+
+.notification-empty {
+    padding: 22px 14px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.notification-panel-footer {
+    padding: 8px 4px 2px;
+    border-top: 1px solid var(--border);
+}
+
+.notification-panel-footer .dropdown-item {
+    justify-content: center;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+html[data-theme="dark"] .notification-item.unread { background: #1B2C3D; }
+html[data-theme="dark"] .notification-item-icon { background: #1D2F2F; color: #8DE0D1; }
 
 /* User Profile Dropdown Styles */
 .user-dropdown-container {
@@ -353,6 +548,11 @@ header{
     color: #0369a1;
 }
 
+.badge-hr {
+    background: #dcfce7;
+    color: #15803d;
+}
+
 .dropdown-divider {
     height: 1px;
     background: #f1f5f9;
@@ -399,6 +599,12 @@ header{
 .page-container { padding: 30px; }
 .section { display: none; animation: fadeIn 0.3s ease; }
 .section.active { display: block; }
+#employee-module[hidden],
+#unhired-employees[hidden],
+#admin-employee-module-link[hidden],
+#admin-unhired-module-link[hidden] { display: none !important; }
+#sidebarNav [hidden],
+.page-container .section[hidden] { display: none !important; }
 
 /* ================= CARDS & WIDGETS ================= */
 .stats-grid {
@@ -428,6 +634,11 @@ header{
 }
 
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.not-qualified-card > summary { cursor: pointer; list-style: none; margin-bottom: 0; }
+.not-qualified-card > summary::-webkit-details-marker { display: none; }
+.not-qualified-card[open] > summary { margin-bottom: 20px; }
+.not-qualified-toggle { transition: transform 0.2s ease; }
+.not-qualified-card[open] .not-qualified-toggle { transform: rotate(180deg); }
 .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
 .btn-primary { background: var(--primary); color: white; }
 .btn-primary:hover { background: #1a6ad4; }
@@ -563,7 +774,122 @@ html[data-theme="dark"] .theme-option input:checked + .theme-option-icon { backg
 html[data-theme="dark"] .settings-heading-icon { background: #1A2C43; color: #9BC6FF; }
 html[data-theme="dark"] .candidate-photo-frame { background: var(--surface-muted); color: var(--text-muted); }
 html[data-theme="dark"] .sidebar-collapse-toggle { background: var(--surface-muted); border-color: var(--border); color: var(--text-muted); }
+html[data-theme="dark"] .notification-bell { background: var(--surface-muted); border-color: var(--border); color: var(--text); }
+html[data-theme="dark"] .notification-bell:hover { background: var(--surface-hover); border-color: var(--primary); color: var(--primary); }
+html[data-theme="dark"] .notification-badge { box-shadow: 0 0 0 2px var(--card); }
 
+.recent-activities-card { overflow: hidden; }
+.recent-activities-header { align-items: flex-start; margin-bottom: 20px; }
+.recent-activities-heading { display: flex; align-items: flex-start; gap: 12px; }
+.recent-activities-heading-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: 10px;
+    background: #EAF4F1;
+    color: var(--primary);
+}
+.recent-activities-heading-copy h3 { margin: 0 0 3px; }
+.recent-activities-heading-copy p { margin: 0; color: var(--text-muted); font-size: 12px; }
+.recent-activities-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    margin-top: 2px;
+    padding: 0 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.recent-activities-refresh {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color .18s ease, border-color .18s ease, background .18s ease;
+}
+.recent-activities-refresh:hover { border-color: var(--primary); background: #F3F8F6; color: var(--primary); }
+.recent-activities-refresh:disabled { cursor: wait; opacity: .65; }
+.recent-activities-list {
+    display: grid;
+    gap: 0;
+    max-height: min(360px, 50vh);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    padding-right: 8px;
+}
+.recent-activity-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 12px;
+    padding: 0 0 18px;
+}
+.recent-activity-item:not(:last-child)::before {
+    position: absolute;
+    top: 35px;
+    bottom: 0;
+    left: 18px;
+    width: 1px;
+    background: var(--border);
+    content: "";
+}
+.recent-activity-avatar {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border: 3px solid var(--card);
+    border-radius: 50%;
+    background: #EAF4F1;
+    color: #075E59;
+    font-size: 11px;
+    font-weight: 700;
+}
+.recent-activity-content { min-width: 0; padding: 2px 0 0; }
+.recent-activity-description { color: var(--text); font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+.recent-activity-description strong { font-weight: 700; }
+.recent-activity-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 6px; }
+.recent-activity-role {
+    display: inline-flex;
+    align-items: center;
+    min-height: 19px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .035em;
+    text-transform: capitalize;
+}
+.recent-activity-time { color: var(--text-muted); font-size: 11px; }
+.recent-activities-state {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 28px 16px;
+    color: var(--text-muted);
+    text-align: center;
+}
+.recent-activities-state i { color: var(--primary); font-size: 20px; }
+html[data-theme="dark"] .recent-activities-heading-icon,
+html[data-theme="dark"] .recent-activity-avatar { background: #203430; color: #8DE0D1; }
+html[data-theme="dark"] .recent-activities-refresh:hover { background: var(--surface-hover); }
 /* ================= MODAL ================= */
 .modal-overlay {
     display: none;
@@ -892,13 +1218,6 @@ html[data-theme="dark"] .sidebar-collapse-toggle { background: var(--surface-mut
     border-color: #fde68a;
 }
 
-.onb-status-select.In-Progress,
-.onb-status-select[data-status="In Progress"] {
-    background: #e0f2fe;
-    color: #0369a1;
-    border-color: #bae6fd;
-}
-
 .onb-status-select.Completed,
 .onb-status-select[data-status="Completed"] {
     background: #d1fae5;
@@ -1021,6 +1340,14 @@ html[data-theme="dark"] .sidebar-collapse-toggle { background: var(--surface-mut
     .user-profile-btn {
         padding: 4px 8px;
     }
+    .header-actions {
+        gap: 8px;
+    }
+    .notification-bell {
+        width: 38px;
+        height: 38px;
+        font-size: 15px;
+    }
 }
 
 :root {
@@ -1105,6 +1432,101 @@ html[data-theme="dark"] .sidebar-menu-group > summary:hover { background: #20343
 html[data-theme="dark"] .sidebar a.active { border-right-color: var(--primary); }
 html[data-theme="dark"] th { background: #13201E; color: var(--text-muted); }
 html[data-theme="dark"] tr:hover { background: #1C2C29; }
+html[data-theme="dark"] .onboarding-card {
+    background: var(--card);
+    border-color: var(--border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+html[data-theme="dark"] .onboarding-card:hover { border-color: #45615B; }
+html[data-theme="dark"] .onb-card-header { background: #182423; }
+html[data-theme="dark"] .onb-card-header:hover { background: #1D2D2A; }
+html[data-theme="dark"] .onb-user-details strong { color: var(--text); }
+html[data-theme="dark"] .onb-tag-code {
+    background: #263531;
+    color: #D0DED9;
+}
+html[data-theme="dark"] .onb-tag-dept {
+    background: #1D3A37;
+    color: #A8E4D8;
+}
+html[data-theme="dark"] .onb-progress-count { color: var(--text-muted); }
+html[data-theme="dark"] .onb-progress-bar-bg { background: #31433F; }
+html[data-theme="dark"] .onb-chevron-badge { background: #263531; }
+html[data-theme="dark"] .onb-chevron { color: #B3C4BE; }
+html[data-theme="dark"] .onboarding-card.expanded .onb-chevron-badge { background: #25413B; }
+html[data-theme="dark"] .onb-card-body {
+    background: #131F1D;
+    border-top-color: var(--border);
+}
+html[data-theme="dark"] .onb-task-table th {
+    color: var(--text-muted);
+    border-bottom-color: var(--border);
+}
+html[data-theme="dark"] .onb-task-row {
+    background: #1B2926;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+html[data-theme="dark"] .onb-task-row:hover {
+    background: #22332F;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.24);
+}
+html[data-theme="dark"] .onb-task-row td { color: var(--text); }
+html[data-theme="dark"] .onb-due-badge {
+    background: #263531;
+    color: #C1D0CB;
+}
+html[data-theme="dark"] .onb-status-select {
+    color-scheme: dark;
+    background-color: #263531;
+}
+html[data-theme="dark"] .onb-status-select.Pending,
+html[data-theme="dark"] .onb-status-select[data-status="Pending"] {
+    background: #493A1E;
+    color: #F7D58A;
+    border-color: #705B2F;
+}
+html[data-theme="dark"] .onb-status-select.Completed,
+html[data-theme="dark"] .onb-status-select[data-status="Completed"] {
+    background: #1D4035;
+    color: #A6E8C8;
+    border-color: #32664F;
+}
+html[data-theme="dark"] #employeeDetailModal .modal {
+    background: #182423;
+    border-color: #2B3D3A;
+    color: #E5F0ED;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+html[data-theme="dark"] #employeeDetailModal .employee-profile-titlebar button {
+    background: #263531 !important;
+    color: #D0DED9;
+}
+html[data-theme="dark"] #employeeDetailModal .employee-profile-titlebar button:hover {
+    background: #31433F !important;
+}
+html[data-theme="dark"] #employeeDetailModal .employee-profile-hero {
+    background: linear-gradient(135deg, #1B2926, #203430) !important;
+    border-color: #344A44 !important;
+}
+html[data-theme="dark"] #employeeDetailModal #detail-name { color: #E5F0ED !important; }
+html[data-theme="dark"] #employeeDetailModal #detail-role-dept { color: #B4C6C0 !important; }
+html[data-theme="dark"] #employeeDetailModal .employee-profile-section {
+    background: #1B2926 !important;
+    border-color: #344A44 !important;
+}
+html[data-theme="dark"] #employeeDetailModal .employee-profile-section label { color: #A7BBB6 !important; }
+html[data-theme="dark"] #employeeDetailModal .employee-profile-section [style*="color:#111827"] {
+    color: #E5F0ED !important;
+}
+html[data-theme="dark"] #employeeDetailModal .candidate-photo-preview > span { color: #CBD8D4; }
+html[data-theme="dark"] #employeeDetailModal .candidate-photo-frame {
+    background: #13201E;
+    border-color: #344A44;
+    color: #A7BBB6;
+}
+html[data-theme="dark"] #employeeDetailModal .candidate-photo-frame img {
+    border-color: #344A44;
+}
 
 @media (max-width: 768px) {
     .page-container { padding: 20px 16px; }
@@ -1117,11 +1539,104 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
     .stats-grid { grid-template-columns: 1fr; gap: 12px; }
     .content-card { padding: 16px; }
     header { padding: 10px 12px; }
+    .recent-activities-header { gap: 10px; }
+    .recent-activities-heading { gap: 9px; }
+    .recent-activities-heading-icon { width: 36px; height: 36px; flex-basis: 36px; }
+    .recent-activities-heading-copy p { max-width: 210px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+.ness-launcher {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    padding: 0 19px;
+    border: 0;
+    border-radius: 28px;
+    background: var(--primary);
+    box-shadow: 0 8px 24px rgba(21, 70, 130, .28);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.ness-launcher:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.ness-launcher:focus-visible,
+.ness-panel button:focus-visible,
+.ness-panel textarea:focus-visible { outline: 3px solid #F59E0B; outline-offset: 3px; }
+.ness-panel[hidden],
+.ness-launcher[hidden] { display: none !important; }
+.ness-panel {
+    position: fixed;
+    right: 24px;
+    bottom: 92px;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    width: min(390px, calc(100vw - 28px));
+    height: min(590px, calc(100vh - 120px));
+    min-height: 330px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--card);
+    box-shadow: 0 18px 55px rgba(15, 23, 42, .22);
+    color: var(--text);
+}
+.ness-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 15px 17px;
+    background: var(--primary);
+    color: #fff;
+}
+.ness-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.ness-avatar { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px; border-radius: 50%; background: rgba(255,255,255,.2); font-weight: 800; }
+.ness-title { display: grid; gap: 2px; }
+.ness-title strong { font-size: 15px; }
+.ness-title small { color: rgba(255,255,255,.82); font-size: 11px; }
+.ness-header-actions { display: flex; align-items: center; gap: 6px; }
+.ness-header-actions button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+}
+.ness-header-actions button:hover { background: rgba(255,255,255,.16); }
+.ness-scope-note { padding: 10px 15px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 11px; line-height: 1.45; }
+.ness-messages { display: flex; flex: 1; flex-direction: column; gap: 12px; overflow-y: auto; padding: 15px; }
+.ness-message { max-width: 91%; padding: 11px 13px; border-radius: 13px; font-size: 13px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ness-message-assistant { align-self: flex-start; border: 1px solid var(--border); border-bottom-left-radius: 4px; background: var(--surface-muted); color: var(--text); }
+.ness-message-user { align-self: flex-end; border-bottom-right-radius: 4px; background: var(--primary); color: #fff; }
+.ness-message-error { border-color: #FECACA; background: #FEF2F2; color: #991B1B; }
+.ness-suggestions { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 15px 12px; }
+.ness-suggestions button { padding: 7px 9px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); color: var(--text-muted); font-size: 11px; cursor: pointer; }
+.ness-suggestions button:hover { border-color: var(--primary); color: var(--primary); }
+.ness-form { display: flex; align-items: flex-end; gap: 9px; padding: 12px; border-top: 1px solid var(--border); }
+.ness-form textarea { flex: 1; min-width: 0; min-height: 42px; max-height: 110px; resize: vertical; padding: 11px 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+.ness-form button { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border: 0; border-radius: 11px; background: var(--primary); color: #fff; cursor: pointer; }
+.ness-form button:disabled { cursor: wait; opacity: .6; }
+@media (max-width: 480px) {
+    .ness-launcher { right: 15px; bottom: 15px; }
+    .ness-panel { right: 10px; bottom: 78px; width: calc(100vw - 20px); height: min(620px, calc(100vh - 95px)); }
+}
+html[data-theme="dark"] .ness-suggestions button { background: var(--surface-muted); }
+html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background: #321F25; color: #FCA5A5; }
 </style>
 </head>
 <body>
@@ -1141,25 +1656,46 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
         </button>
     </div>
 
-    <div class="menu-category">Core HR</div>
+    <nav class="sidebar-navigation" aria-label="Main navigation">
+    <div class="menu-category">Overview</div>
     <a href="#" onclick="showSection('dashboard')" class="active" title="Dashboard" aria-label="Dashboard"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></a>
-    <a href="#" onclick="showSection('employees')" title="Employee Records" aria-label="Employee Records"><i class="fa-solid fa-user-tie"></i> <span>Employee Records</span></a>
-    <a href="#" onclick="showSection('accounts')" title="User Account Management" aria-label="User Account Management"><i class="fa-solid fa-user-gear"></i> <span>User Account Management</span></a>
 
     <div class="menu-category">Recruitment</div>
-    <a href="#" onclick="showSection('applicants')" title="Applicant Management" aria-label="Applicant Management"><i class="fa-solid fa-file-contract"></i> <span>Applicant Mgmt</span></a>
-    <details class="sidebar-menu-group" open>
+    <details class="sidebar-menu-group" id="applicant-sidebar-menu">
+        <summary title="Applicant Management" aria-label="Applicant Management"><i class="fa-solid fa-file-contract"></i> <span>Applicant Mgmt</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i></summary>
+        <div class="sidebar-submenu">
+            <a href="#" onclick="showSection('applicants')" title="Recruitment Pipeline" aria-label="Recruitment Pipeline"><i class="fa-solid fa-users"></i> <span>Recruitment Pipeline</span></a>
+            <a href="#" onclick="showNotQualifiedApplicants()" title="Applicants Marked as Not Qualified" aria-label="Applicants Marked as Not Qualified"><i class="fa-solid fa-user-xmark"></i> <span>Applicants Marked as Not Qualified</span></a>
+        </div>
+    </details>
+    <details class="sidebar-menu-group" id="interview-sidebar-menu">
         <summary title="Interviews" aria-label="Interviews"><i class="fa-solid fa-calendar-check"></i> <span>Interviews</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i></summary>
         <div class="sidebar-submenu">
             <a href="#" onclick="showSection('interviews')" title="Interview Management" aria-label="Interview Management"><i class="fa-solid fa-calendar-plus"></i> <span>Interview Management</span></a>
-            <a href="#" onclick="showSection('interview-schedule')" title="Interview Schedule" aria-label="Interview Schedule"><i class="fa-solid fa-list-check"></i> <span>Interview Schedule</span></a>
+            <a href="#" onclick="showSection('interview-schedule')" title="Applicants Ready for Interview" aria-label="Applicants Ready for Interview"><i class="fa-solid fa-list-check"></i> <span>Applicants Ready for Interview</span></a>
         </div>
     </details>
-    <a href="#" onclick="showSection('onboarding')" title="Onboarding" aria-label="Onboarding"><i class="fa-solid fa-handshake"></i> <span>Onboarding</span></a>
+    <details class="sidebar-menu-group" id="onboarding-sidebar-menu">
+        <summary title="Onboarding" aria-label="Onboarding" onclick="event.preventDefault(); showSection('onboarding')"><i class="fa-solid fa-handshake"></i> <span>Onboarding</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i></summary>
+        <div class="sidebar-submenu">
+            <a href="#" onclick="showCompletedOnboarding()" title="Complete Onboarding" aria-label="Complete Onboarding"><i class="fa-solid fa-circle-check"></i> <span>Complete Onboarding</span></a>
+        </div>
+    </details>
 
-    <div class="menu-category">Communication & AI</div>
+    <div class="menu-category" id="core-hr-menu-category">Core HR</div>
+    <details class="sidebar-menu-group" id="employee-sidebar-menu">
+        <summary title="Employee Records Management" aria-label="Employee Records Management"><i class="fa-solid fa-user-tie"></i> <span>Employee Records Management</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i></summary>
+        <div class="sidebar-submenu">
+            <a href="#" onclick="showEmployeeRole('')" title="All Employee Records" aria-label="All Employee Records"><i class="fa-solid fa-users"></i> <span>All Employee Records</span></a>
+            <div id="employee-role-links"></div>
+        </div>
+    </details>
+    <a href="#" id="admin-employee-module-link" hidden onclick="showEmployeeCategory('employee-module')" title="Employee" aria-label="Employee"><i class="fa-solid fa-user-check"></i> <span>Employee</span></a>
+    <a href="#" id="admin-unhired-module-link" hidden onclick="showEmployeeCategory('unhired-employees')" title="Unhired Employees" aria-label="Unhired Employees"><i class="fa-solid fa-user-clock"></i> <span>Unhired</span></a>
+
+    <div class="menu-category">Communication</div>
     <a href="#" onclick="showSection('announcements')" title="Announcements" aria-label="Announcements"><i class="fa-solid fa-bullhorn"></i> <span>Announcements</span></a>
-    <a href="#" onclick="openAIAssistant(); closeMobileSidebar();" title="AI Assistant" aria-label="AI Assistant"><i class="fa-solid fa-sparkles" style="color:#7B61FF;"></i> <span style="font-weight:600; background:linear-gradient(135deg, #2F80ED, #7B61FF); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">AI Assistant</span></a>
+    </nav>
 </div>
 
 
@@ -1172,37 +1708,64 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
             </button>
             <h3 id="page-title">Dashboard Overview</h3>
         </div>
-        <div class="user-dropdown-container">
-            <div class="user-profile-btn" id="profileDropdownBtn" onclick="toggleProfileDropdown(event)" role="button" aria-haspopup="true" aria-expanded="false">
+        <div class="header-actions">
+            <div class="notification-container">
+                <button type="button" class="notification-bell" id="notificationBell" onclick="toggleNotifications(event)" title="Notifications" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="notification-badge" id="notification-badge">0</span>
+                </button>
+                <div class="notification-panel" id="notificationPanel" role="menu" aria-label="Notifications">
+                    <div class="notification-panel-header">
+                        <strong>Notifications</strong>
+                        <span class="notification-panel-count" id="notification-panel-count">0 unread</span>
+                    </div>
+                    <div class="notification-list" id="notification-list">
+                        <div class="notification-empty">Loading announcements...</div>
+                    </div>
+                    <div class="notification-panel-footer">
+                        <button type="button" class="dropdown-item" onclick="openAnnouncementsFromBell()">
+                            <i class="fa-solid fa-bullhorn"></i>
+                            <span>View all announcements</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="user-dropdown-container">
+                <div class="user-profile-btn" id="profileDropdownBtn" onclick="toggleProfileDropdown(event)" role="button" aria-haspopup="true" aria-expanded="false">
                 <div class="profile-avatar-wrapper">
                     <div class="avatar" id="adminAvatar">AD</div>
                     <span class="status-indicator" title="Online"></span>
                 </div>
                 <div class="user-details-text">
-                    <strong id="adminName">Admin User</strong>
+                    <strong id="adminName">Human Resources</strong>
                 </div>
                 <i class="fa-solid fa-chevron-down dropdown-chevron"></i>
-            </div>
-
-            <div class="profile-dropdown-menu" id="profileDropdownMenu">
-                <div class="dropdown-header-card">
-                    <div class="avatar" id="dropdownAvatar" style="width:42px; height:42px; font-size:15px; background:var(--secondary);">AD</div>
-                    <div class="dropdown-header-info">
-                        <strong id="dropdownName">Admin User</strong>
-                        <span class="user-email" id="dropdownEmail">admin@hrms.com</span>
-                        <span class="dropdown-role-badge badge-admin" id="dropdownRole">Admin</span>
-                    </div>
                 </div>
-                <div class="dropdown-divider"></div>
-                <a class="dropdown-item" onclick="showSection('settings'); closeAllDropdowns();">
-                    <i class="fa-solid fa-gear" style="color:var(--primary);"></i>
-                    <span>Settings</span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <button class="dropdown-item danger-item" onclick="logout()">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span>Sign Out</span>
-                </button>
+
+                <div class="profile-dropdown-menu" id="profileDropdownMenu">
+                    <div class="dropdown-header-card">
+                        <div class="avatar" id="dropdownAvatar" style="width:42px; height:42px; font-size:15px; background:var(--secondary);">AD</div>
+                        <div class="dropdown-header-info">
+                            <strong id="dropdownName">Human Resources</strong>
+                            <span class="user-email" id="dropdownEmail">admin@hrms.com</span>
+                            <span class="dropdown-role-badge badge-hr" id="dropdownRole">HR</span>
+                        </div>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" onclick="showSection('settings'); closeAllDropdowns();">
+                        <i class="fa-solid fa-gear" style="color:var(--primary);"></i>
+                        <span>Settings</span>
+                    </a>
+                    <a class="dropdown-item" onclick="showSection('about'); closeAllDropdowns();">
+                        <i class="fa-solid fa-circle-info" style="color:var(--primary);"></i>
+                        <span>About</span>
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <button class="dropdown-item danger-item" onclick="logout()">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Sign Out</span>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -1212,44 +1775,48 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
 <!-- 1. DASHBOARD HOME -->
         <div id="dashboard" class="section active">
             <div class="stats-grid">
-                <div class="stat-card" style="border-color: var(--primary);">
-                    <h3>Total Headcount</h3>
-                    <div class="value" id="dash-total-emp">0</div>
-                </div>
-                <div class="stat-card" style="border-color: var(--accent);">
-                    <h3>New Hires (30 days)</h3>
+                <div class="stat-card" id="dashboard-new-employee-card" style="border-color: var(--accent); cursor:pointer;" role="link" tabindex="0" onclick="showEmployeeRole('')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showEmployeeRole('');}">
+                    <h3>New Employee</h3>
                     <div class="value" id="dash-new-hires">0</div>
                 </div>
-                <div class="stat-card" style="border-color: var(--secondary);">
+                <div class="stat-card" style="border-color: var(--secondary); cursor:pointer;" role="link" tabindex="0" onclick="showSection('applicants')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('applicants');}">
                     <h3>New Applicants</h3>
                     <div class="value" id="dash-applicants">0</div>
                 </div>
-                <div class="stat-card" style="border-color: var(--warning);">
-                    <h3>Retention Rate</h3>
-                    <div class="value" id="dash-retention">0%</div>
+                <div class="stat-card" style="border-color: var(--primary); cursor:pointer;" role="link" tabindex="0" onclick="showCompletedOnboarding()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showCompletedOnboarding();}">
+                    <h3>Complete Onboarding</h3>
+                    <div class="value" id="dash-completed-onboarding">0</div>
                 </div>
             </div>
 
-            <div class="content-card">
-                <div class="card-header">
-                    <h3>Recent Activities</h3>
+            <div class="content-card recent-activities-card">
+                <div class="card-header recent-activities-header">
+                    <div class="recent-activities-heading">
+                        <span class="recent-activities-heading-icon" aria-hidden="true"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                        <div class="recent-activities-heading-copy">
+                            <h3>Recent Activities</h3>
+                            <p>Latest actions across your system</p>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span id="recent-activities-count" class="recent-activities-count">0</span>
+                        <button type="button" id="recent-activities-refresh" class="recent-activities-refresh" aria-label="Refresh recent activities" title="Refresh activities" onclick="loadRecentActivities()">
+                            <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </div>
-                <p>Welcome to your centralized HR Command Center. Use the sidebar to navigate modules.</p>
+                <div id="recent-activities-list" class="recent-activities-list" aria-live="polite" aria-busy="true">
+                    <div class="recent-activities-state"><i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i><span>Loading recent activities...</span></div>
+                </div>
             </div>
 
             <!-- 1b. WORKFORCE ANALYTICS (live data) -->
-            <div class="stats-grid">
+            <div class="stats-grid" id="dashboard-employee-analytics">
                 <div class="content-card">
-                    <h3>Department Distribution</h3>
-                    <div id="department-distribution" style="height:150px; display:flex; align-items:flex-end; gap:20px; padding-top:20px;">
+                    <h3>Employees by Position</h3>
+                    <div id="department-distribution" style="height:210px; display:flex; align-items:stretch; gap:12px; padding:20px 8px 0; overflow-x:auto;">
                         <div style="color:#9CA3AF; align-self:center;">Loading...</div>
                     </div>
-                    <div id="department-labels" style="display:flex; gap:20px; margin-top:10px; font-size:12px;"></div>
-                </div>
-                <div class="content-card">
-                    <h3>Retention Rate</h3>
-                    <h1 id="retention-value" style="font-size:48px; color:var(--accent); margin-top:20px;">--</h1>
-                    <p style="color:#666;">% of total headcount that is Active</p>
                 </div>
             </div>
         </div>
@@ -1258,7 +1825,7 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
         <div id="employees" class="section">
             <div class="content-card">
                 <div class="card-header">
-                    <h3>Employee Directory</h3>
+                    <h3 id="employee-directory-heading">Employee Directory</h3>
                 </div>
                 <div class="table-responsive">
                     <table>
@@ -1268,40 +1835,49 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
                                 <th>Name</th>
                                 <th>Department</th>
                                 <th>Role</th>
-                                <th>Status</th>
-                                <th>Action</th>
+                                <th id="employee-actions-heading">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="employee-table-body">
-                            <tr><td colspan="6" class="empty-state">Loading employees...</td></tr>
+                            <tr><td colspan="5" class="empty-state">Loading employees...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- 3. USER ACCOUNT MANAGEMENT -->
-        <div id="accounts" class="section">
+        <div id="employee-module" class="section" hidden>
             <div class="content-card">
-                <div class="card-header">
-                    <h3>User Account Management</h3>
-                </div>
+                <div class="card-header"><h3>Employee</h3></div>
                 <div class="table-responsive">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Department</th>
-                                <th>Employee ID</th>
-                                <th>Position</th>
-                                <th>Created</th>
-                                <th>Action</th>
-                            </tr>
+                            <tr><th>ID</th><th>Name</th><th>Department</th><th>Role</th><th>Certification</th><th>Action</th></tr>
                         </thead>
-                        <tbody id="user-account-table-body">
-                            <tr><td colspan="8" class="empty-state">Loading user accounts...</td></tr>
+                        <tbody id="complete-employee-table-body">
+                            <tr><td colspan="6" class="empty-state">Loading employees...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="content-card">
+                <div class="card-header"><h3>Employee Certification</h3></div>
+                <div id="employee-certification-details" aria-live="polite">
+                    <p style="color:var(--text-muted);">Select an employee to view and download their Certificate of Employment.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="unhired-employees" class="section" hidden>
+            <div class="content-card">
+                <div class="card-header"><h3>Unhired Employees</h3></div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Name</th><th>Department</th><th>Role</th><th>Status</th><th>Comment</th></tr>
+                        </thead>
+                        <tbody id="unhired-employee-table-body">
+                            <tr><td colspan="6" class="empty-state">Loading employees...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1348,11 +1924,11 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
                         <div class="settings-fields">
                             <div class="form-group">
                                 <label for="settings-name">Full name</label>
-                                <input type="text" id="settings-name" class="form-control" value="Admin User" autocomplete="name">
+                                <input type="text" id="settings-name" class="form-control" value="Human Resources" autocomplete="name">
                             </div>
                             <div class="form-group">
                                 <label for="settings-email">Email address</label>
-                                <input type="text" id="settings-email" class="form-control" value="admin@gmail.com" disabled>
+                                <input type="text" id="settings-email" class="form-control" value="phnhes@gmail.com" disabled>
                             </div>
                         </div>
                         <div class="settings-actions">
@@ -1363,8 +1939,46 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
             </div>
         </div>
 
+        <div id="about" class="section">
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>About the System</h3>
+                </div>
+                <div style="max-width:900px; display:grid; gap:18px; line-height:1.7; color:var(--text);">
+                    <p>This system was developed by <strong>Mr. Nhes Anthony N. Priolo</strong> on <strong>August 10, 2026</strong>.</p>
+                    <p>The system was designed to simplify, improve, and streamline the <strong>applicant recruitment and hiring process</strong> of the <strong>Human Resources Department of 2GO Travel at Ever Gotesco Commonwealth Mall</strong>.</p>
+                    <p>It provides a centralized platform that helps the HR team efficiently manage applicant information, recruitment stages, interview scheduling, document submissions, and hiring decisions. The system is intended to reduce manual processes, minimize errors, improve record management, and make the recruitment process faster and more organized.</p>
+                    <p>The system also aims to provide applicants with a more convenient and user-friendly application experience by allowing them to submit their information and requirements digitally and monitor their recruitment status.</p>
+                    <dl style="display:grid; grid-template-columns:minmax(130px, max-content) 1fr; gap:8px 16px; margin:4px 0 0;">
+                        <dt><strong>Developer:</strong></dt><dd>Mr. Nhes Anthony N. Priolo</dd>
+                        <dt><strong>Development Date:</strong></dt><dd>August 10, 2026</dd>
+                        <dt><strong>Organization:</strong></dt><dd>2GO Travel – Ever Gotesco Commonwealth Mall</dd>
+                        <dt><strong>Department:</strong></dt><dd>Human Resources Department</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
         <!-- 4. APPLICANT MANAGEMENT -->
         <div id="applicants" class="section">
+            <div class="content-card" id="hr-recruitment-qr-card" hidden>
+                <div class="card-header">
+                    <div>
+                        <h3>HR Recruitment Portal QR Code</h3>
+                        <small style="color:#64748B;">Applicants can scan this code to open the application portal.</small>
+                    </div>
+                    <a href="recruitment-portal-qr.svg" download="hr-recruitment-portal-qr.svg" class="btn btn-primary" style="text-decoration:none;">
+                        <i class="fa-solid fa-download"></i> Download QR Code
+                    </a>
+                </div>
+                <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+                    <img src="recruitment-portal-qr.svg" alt="QR code linking to the HR Recruitment Portal" width="200" height="200" style="image-rendering:pixelated; border:1px solid var(--border); border-radius:8px; padding:8px; background:#fff;">
+                    <div>
+                        <strong>HR Recruitment Portal</strong>
+                        <p style="margin:6px 0 0; color:#64748B; overflow-wrap:anywhere;">https://corehr.tour-sphere.com/apply.html</p>
+                    </div>
+                </div>
+            </div>
             <div class="content-card">
                 <div class="card-header">
                     <div>
@@ -1372,7 +1986,7 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
                         <small style="color:#64748B;">Candidates who submitted their details via the public portal or HR.</small>
                     </div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                        <a href="apply.html" target="_blank" class="btn" style="background:#EFF6FF; color:var(--primary); text-decoration:none; font-size:13px;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Application Form</a>
+                        <a href="apply.html" id="open-application-form" target="_blank" class="btn" style="background:#EFF6FF; color:var(--primary); text-decoration:none; font-size:13px;" hidden><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Application Form</a>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -1382,11 +1996,36 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
                                 <th>Candidate</th>
                                 <th>Position</th>
                                 <th>Applied Date</th>
-                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="applicant-table-body">
-                            <tr><td colspan="4" class="empty-state">Loading applicants...</td></tr>
+                            <tr><td colspan="3" class="empty-state">Loading applicants...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="not-qualified" class="section">
+            <div class="content-card">
+                <div class="card-header">
+                    <div>
+                        <h3>Applicants Marked as Not Qualified</h3>
+                        <small style="color:#64748B;">Applicants marked as not qualified.</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Candidate</th>
+                                <th>Position</th>
+                                <th>Applied Date</th>
+                                <th>Comments</th>
+                            </tr>
+                        </thead>
+                        <tbody id="not-qualified-applicant-table-body">
+                            <tr><td colspan="4" class="empty-state">No applicants marked as not qualified.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1440,7 +2079,7 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
         </div>
         <div id="interview-schedule" class="section">
             <div class="content-card">
-                <div class="card-header"><div><h3>Interview Schedule</h3></div></div>
+                <div class="card-header"><div><h3>Applicants Ready for Interview</h3></div></div>
                 <div class="table-responsive">
                     <table>
                         <thead><tr><th>Candidate</th><th>Position</th><th>Date and Time</th><th>Interviewer</th><th>Location</th><th>Notes</th><th>Status</th></tr></thead>
@@ -1448,73 +2087,22 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
                     </table>
                 </div>
             </div>
+            <details class="content-card not-qualified-card">
+                <summary class="card-header">
+                    <div><h3>Did Not Pass the Interview / No Show</h3></div>
+                    <i class="fa-solid fa-chevron-down not-qualified-toggle" aria-hidden="true"></i>
+                </summary>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Candidate</th><th>Position</th><th>Date and Time</th><th>Interviewer</th><th>Location</th><th>Notes</th><th>Status</th></tr></thead>
+                        <tbody id="interview-outcome-table-body"><tr><td colspan="7" class="empty-state">Loading interview outcomes...</td></tr></tbody>
+                    </table>
+                </div>
+            </details>
         </div>
 
 <!-- 5. ONBOARDING -->
         <div id="onboarding" class="section">
-            <div class="stats-grid">
-                <div class="stat-card" style="border-color: var(--primary);">
-                    <h3>Active Onboardings</h3>
-                    <div class="value" id="onb-active-count">0</div>
-                </div>
-                <div class="stat-card" style="border-color: var(--accent);">
-                    <h3>Completed Tasks</h3>
-                    <div class="value" id="onb-completed-count">0</div>
-                </div>
-                <div class="stat-card" style="border-color: var(--warning);">
-                    <h3>Average Progress</h3>
-                    <div class="value" id="onb-avg-progress">0%</div>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="content-card">
-                    <h3>Start Onboarding Checklist</h3>
-                    <p style="color:#6B7280; font-size:14px; margin-bottom:15px;">Generate the standard 8-task onboarding checklist for a new hire.</p>
-                    <div class="form-group">
-                        <label>Employee</label>
-                        <select id="onb-start-employee" class="form-control">
-                            <option value="">Select an employee...</option>
-                        </select>
-                    </div>
-                    <div class="modal-actions">
-                        <button class="btn btn-success" onclick="startOnboardingChecklist()">Generate Checklist</button>
-                    </div>
-                </div>
-
-                <div class="content-card">
-                    <h3>Add Custom Task</h3>
-                    <p style="color:#6B7280; font-size:14px; margin-bottom:15px;">Assign a custom onboarding task to an employee.</p>
-                    <div class="form-group">
-                        <label>Employee</label>
-                        <select id="onb-task-employee" class="form-control">
-                            <option value="">Select an employee...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Task</label>
-                        <input type="text" id="onb-task-text" class="form-control" placeholder="e.g. Security badge setup">
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Due Date</label>
-                            <input type="date" id="onb-task-due" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label>Status</label>
-                            <select id="onb-task-status" class="form-control">
-                                <option>Pending</option>
-                                <option>In Progress</option>
-                                <option>Completed</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-actions">
-                        <button class="btn btn-primary" onclick="addOnboardingTask()">Add Task</button>
-                    </div>
-                </div>
-            </div>
-
             <div class="content-card">
                 <div class="card-header">
                     <h3>Onboarding Checklists</h3>
@@ -1524,7 +2112,26 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
             </div>
         </div>
 
-        <!-- 6. ANNOUNCEMENTS MODULE -->
+            <div id="completed-onboarding" class="section">
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3>Employees with Completed Onboarding</h3>
+                        <button class="btn btn-primary" onclick="loadCompletedOnboarding()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr><th>Employee</th><th>Employee ID</th><th>Department</th><th>Position</th><th>Completed Tasks</th></tr>
+                            </thead>
+                            <tbody id="completed-onboarding-table-body">
+                                <tr><td colspan="5" class="empty-state">Loading completed onboarding...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. ANNOUNCEMENTS MODULE -->
         <div id="announcements" class="section">
             <div class="stats-grid">
                 <div class="stat-card" style="border-color: var(--primary);">
@@ -1607,7 +2214,7 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
                 <input type="text" id="emp-role" class="form-control" placeholder="Developer">
             </div>
         </div>
-<div class="form-group">
+<div class="form-group" hidden>
             <label>Status</label>
             <select id="emp-status" class="form-control">
                 <option>Active</option>
@@ -1693,27 +2300,26 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
 
 <!-- EMPLOYEE DETAILS MODAL -->
 <div class="modal-overlay" id="employeeDetailModal">
-    <div class="modal" style="max-width:640px; border-radius:14px; padding:24px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+    <div class="modal employee-profile-modal" style="max-width:640px; border-radius:14px; padding:24px;">
+        <div class="employee-profile-titlebar" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
             <h3 id="employeeDetailTitle" style="margin:0; font-size:18px; font-weight:700;"><i class="fa-solid fa-id-card" style="color:var(--primary); margin-right:8px;"></i> Employee Profile</h3>
             <button class="btn btn-sm" style="background:#F3F4F6; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="closeEmployeeDetail()"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <!-- HEADER CARD -->
-        <div style="display:flex; align-items:center; gap:16px; padding:18px; background:linear-gradient(135deg, #F8FAFC, #EFF6FF); border:1px solid #E2E8F0; border-radius:12px; margin-bottom:20px;">
+        <div class="employee-profile-hero" style="display:flex; align-items:center; gap:16px; padding:18px; background:linear-gradient(135deg, #F8FAFC, #EFF6FF); border:1px solid #E2E8F0; border-radius:12px; margin-bottom:20px;">
             <div class="avatar" style="width:60px; height:60px; font-size:24px; font-weight:700; background:var(--primary); color:#FFF; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);" id="detail-avatar">--</div>
             <div style="flex:1;">
                 <div style="font-size:20px; font-weight:700; color:#1F2937;" id="detail-name">-</div>
                 <div style="color:#4B5563; font-size:14px; font-weight:500; margin-top:2px;" id="detail-role-dept">-</div>
             </div>
-            <div id="detail-status-pill"></div>
         </div>
 
         <!-- GRID SECTIONS -->
         <div style="display:flex; flex-direction:column; gap:16px;">
 
             <!-- SECTION 1: PERSONAL & DEMOGRAPHICS -->
-            <div style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+            <div class="employee-profile-section" style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
                 <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
                     <i class="fa-solid fa-user"></i> Personal Details & Demographics
                 </div>
@@ -1730,7 +2336,7 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
             </div>
 
             <!-- SECTION 2: ORGANIZATIONAL DETAILS -->
-            <div style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+            <div class="employee-profile-section" style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
                 <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
                     <i class="fa-solid fa-building-user"></i> Organizational Details
                 </div>
@@ -1742,7 +2348,7 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
             </div>
 
             <!-- SECTION 3: CONTACT & LOCATION -->
-            <div style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+            <div class="employee-profile-section" style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
                 <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
                     <i class="fa-solid fa-phone"></i> Contact & Location
                 </div>
@@ -1752,6 +2358,45 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
                     <div style="grid-column: 1 / -1;"><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Home Address</label><div style="font-weight:600; color:#111827;" id="detail-address">-</div></div>
                     <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Emergency Contact</label><div style="font-weight:600; color:#111827;" id="detail-emergency">-</div></div>
                     <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">TIN Number</label><div style="font-weight:600; color:#111827;" id="detail-tin">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Emergency Contact Name</label><div style="font-weight:600; color:#111827;" id="detail-emergency-name">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Emergency Contact Phone</label><div style="font-weight:600; color:#111827;" id="detail-emergency-phone">-</div></div>
+                </div>
+            </div>
+
+            <div class="employee-profile-section" style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+                <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-address-card"></i> Government Identification Numbers
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; font-size:13px;">
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">SSS Number</label><div style="font-weight:600; color:#111827;" id="detail-sss">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Pag-IBIG Number</label><div style="font-weight:600; color:#111827;" id="detail-pag-ibig">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">NBI Number</label><div style="font-weight:600; color:#111827;" id="detail-nbi">-</div></div>
+                    <div><label style="font-size:11px; color:#6B7280; text-transform:uppercase;">Application Date</label><div style="font-weight:600; color:#111827;" id="detail-applied-date">-</div></div>
+                </div>
+            </div>
+
+            <div class="employee-profile-section" style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+                <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-folder-open"></i> Submitted Documents
+                </div>
+                <div class="candidate-document-previews">
+                    <div class="candidate-photo-preview"><span>Identification Document</span><div class="candidate-photo-frame" id="employee-id-photo-preview">Not uploaded</div></div>
+                    <div class="candidate-photo-preview"><span>2×2 Picture</span><div class="candidate-photo-frame square" id="employee-2x2-photo-preview">Not uploaded</div></div>
+                    <div class="candidate-photo-preview"><span>Resume</span><div class="candidate-photo-frame" id="employee-resume-preview">Not uploaded</div></div>
+                    <div class="candidate-photo-preview"><span>SSS Document Picture</span><div class="candidate-photo-frame" id="employee-sss-photo-preview">Not uploaded</div></div>
+                    <div class="candidate-photo-preview"><span>Pag-IBIG Document Picture</span><div class="candidate-photo-frame" id="employee-pag-ibig-photo-preview">Not uploaded</div></div>
+                    <div class="candidate-photo-preview"><span>NBI Document Picture</span><div class="candidate-photo-frame" id="employee-nbi-photo-preview">Not uploaded</div></div>
+                    <div class="candidate-photo-preview"><span>Health Card Picture</span><div class="candidate-photo-frame" id="employee-health-card-photo-preview">Not uploaded</div></div>
+                    <div class="candidate-photo-preview"><span>PSA Picture</span><div class="candidate-photo-frame" id="employee-psa-photo-preview">Not uploaded</div></div>
+                </div>
+            </div>
+
+            <div class="employee-profile-section" style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+                <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-file-signature"></i> Contract Signed
+                </div>
+                <div class="candidate-document-previews" style="margin-top:0;">
+                    <div class="candidate-photo-preview"><span>Signed Contract Picture</span><div class="candidate-photo-frame" id="employee-contract-signed-photo-preview">Not uploaded</div></div>
                 </div>
             </div>
 
@@ -1791,6 +2436,7 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
                 <label>Role</label>
                 <select id="acc-role" class="form-control">
                     <option value="employee">Employee</option>
+                    <option value="hr">HR</option>
                     <option value="admin">Admin</option>
                 </select>
             </div>
@@ -1918,7 +2564,7 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
             </div>
             <div class="form-group">
                 <label>Contact Number</label>
-                <input type="text" id="app-phone" class="form-control" placeholder="0917-000-0000">
+                <input type="tel" id="app-phone" class="form-control" inputmode="numeric" maxlength="11" pattern="[0-9]{0,11}" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 11)" title="Enter no more than 11 digits." placeholder="0917 000 0000">
             </div>
         </div>
         <div class="form-group">
@@ -1957,8 +2603,35 @@ html[data-theme="dark"] tr:hover { background: #1C2C29; }
     <img id="applicantPhotoZoomImage" alt="">
 </div>
 
+<section class="ness-panel" id="ness-panel" aria-label="Ness AI assistant" aria-hidden="true" hidden>
+    <div class="ness-header">
+        <div class="ness-brand">
+            <div class="ness-avatar" aria-hidden="true">N</div>
+            <div class="ness-title"><strong>Ness</strong><small>HRMS system guide</small></div>
+        </div>
+        <div class="ness-header-actions">
+            <button type="button" id="ness-clear" title="Start a new chat" aria-label="Start a new chat"><i class="fa-solid fa-rotate-left"></i></button>
+            <button type="button" id="ness-close" title="Close chat" aria-label="Close Ness chat"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+    <div class="ness-scope-note">Ness answers questions about this system and its workflows only. No employee or applicant records are shared with Ness.</div>
+    <div class="ness-messages" id="ness-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+    <div class="ness-suggestions" id="ness-suggestions">
+        <button type="button" data-ness-prompt="How does the recruitment workflow work?">Recruitment workflow</button>
+        <button type="button" data-ness-prompt="How do I complete onboarding?">Onboarding</button>
+        <button type="button" data-ness-prompt="How do I use Dark Mode?">Dark Mode</button>
+    </div>
+    <form class="ness-form" id="ness-form">
+        <textarea id="ness-input" rows="1" maxlength="2000" aria-label="Ask Ness about the HR system" placeholder="Ask how this system works..." required></textarea>
+        <button type="submit" id="ness-send" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button>
+    </form>
+</section>
+<button type="button" class="ness-launcher" id="ness-launcher" aria-controls="ness-panel" aria-expanded="false">
+    <i class="fa-solid fa-comments" aria-hidden="true"></i><span>Ask Ness</span>
+</button>
+
 <script src="config.js"></script>
-<script src="auth.js"></script>
+<script src="auth.js?v=hr-role-20261006"></script>
 <script>
 
 // API_BASE is provided globally by auth.js
@@ -2005,9 +2678,71 @@ function closeMobileSidebar() {
     }
 }
 
+function syncInterviewMenu(sectionId) {
+    const interviewMenu = document.getElementById('interview-sidebar-menu');
+    if (interviewMenu) {
+        interviewMenu.open = sectionId === 'interviews' || sectionId === 'interview-schedule';
+    }
+}
+
+function syncApplicantMenu(sectionId) {
+    const applicantMenu = document.getElementById('applicant-sidebar-menu');
+    if (applicantMenu) {
+        applicantMenu.open = sectionId === 'applicants' || sectionId === 'not-qualified';
+    }
+}
+
+function syncEmployeeMenu(sectionId) {
+    const employeeMenu = document.getElementById('employee-sidebar-menu');
+    if (employeeMenu) {
+        employeeMenu.open = sectionId === 'employees';
+    }
+}
+
+function syncOnboardingMenu(sectionId) {
+    const onboardingMenu = document.getElementById('onboarding-sidebar-menu');
+    if (onboardingMenu) {
+        onboardingMenu.open = sectionId === 'onboarding' || sectionId === 'completed-onboarding';
+    }
+}
+
+function isHrDashboardAccount() {
+    return ['admin', 'hr'].includes(getCurrentUser()?.role);
+}
+
+function canAccessEmployeeStatusModules() {
+    const user = getCurrentUser();
+    return user?.role === 'admin' && (user.email || '').trim().toLowerCase() !== 'phnhes@gmail.com';
+}
+
+function closeOnboardingChecklists() {
+    document.querySelectorAll('#onboarding-summary .onboarding-card.expanded').forEach(card => {
+        card.classList.remove('expanded');
+        card.querySelector('.onb-card-header')?.setAttribute('aria-expanded', 'false');
+    });
+}
+
+function showNotQualifiedApplicants() {
+    showSection('not-qualified');
+    document.querySelector('#applicant-sidebar-menu a[onclick="showNotQualifiedApplicants()"]')?.classList.add('active');
+}
+
+async function showCompletedOnboarding() {
+    showSection('completed-onboarding');
+    document.querySelector('.sidebar a[onclick="showCompletedOnboarding()"]')?.classList.add('active');
+    await loadCompletedOnboarding();
+}
+
 // ================= NAVIGATION LOGIC =================
 function showSection(sectionId) {
+    if (['employee-module', 'unhired-employees'].includes(sectionId) && !canAccessEmployeeStatusModules()) return;
+    if (sectionId === 'unhired') return;
     closeMobileSidebar();
+    if (sectionId !== 'onboarding') closeOnboardingChecklists();
+    syncInterviewMenu(sectionId);
+    syncApplicantMenu(sectionId);
+    syncEmployeeMenu(sectionId);
+    syncOnboardingMenu(sectionId);
     if (sectionId === 'interviews') {
         document.getElementById('interview-applicant').value = '';
         document.getElementById('interview-applicant-name').value = '';
@@ -2028,19 +2763,30 @@ function showSection(sectionId) {
     const titles = {
         'dashboard': 'Dashboard Overview',
         'employees': 'Employee Records Management',
-        'accounts': 'User Account Management',
+        'employee-module': 'Employee',
+        'unhired-employees': 'Unhired Employees',
         'settings': 'Settings',
+        'about': 'About the System',
         'applicants': 'Applicant Management',
+        'not-qualified': 'Applicants Marked as Not Qualified',
         'interviews': 'Interview Management',
-        'interview-schedule': 'Interview Schedule',
+        'interview-schedule': 'Applicants Ready for Interview',
         'onboarding': 'New Hire Onboarding',
+        'completed-onboarding': 'Complete Onboarding',
         'announcements': 'Company Announcements'
     };
     document.getElementById('page-title').innerText = titles[sectionId] || 'HRMS';
 }
 
 function showSectionFromMenu(sectionId) {
+    if (['employee-module', 'unhired-employees'].includes(sectionId) && !canAccessEmployeeStatusModules()) return;
+    if (sectionId === 'unhired') return;
     // Programmatically trigger section (for Quick Actions)
+    if (sectionId !== 'onboarding') closeOnboardingChecklists();
+    syncInterviewMenu(sectionId);
+    syncApplicantMenu(sectionId);
+    syncEmployeeMenu(sectionId);
+    syncOnboardingMenu(sectionId);
     if (sectionId === 'interviews') {
         document.getElementById('interview-applicant').value = '';
         document.getElementById('interview-applicant-name').value = '';
@@ -2057,12 +2803,16 @@ function showSectionFromMenu(sectionId) {
     const titles = {
         'dashboard': 'Dashboard Overview',
         'employees': 'Employee Records Management',
-        'accounts': 'User Account Management',
+        'employee-module': 'Employee',
+        'unhired-employees': 'Unhired Employees',
         'settings': 'Settings',
+        'about': 'About the System',
         'applicants': 'Applicant Management',
+        'not-qualified': 'Applicants Marked as Not Qualified',
         'interviews': 'Interview Management',
-        'interview-schedule': 'Interview Schedule',
+        'interview-schedule': 'Applicants Ready for Interview',
         'onboarding': 'New Hire Onboarding',
+        'completed-onboarding': 'Complete Onboarding',
         'announcements': 'Company Announcements'
     };
     document.getElementById('page-title').innerText = titles[sectionId] || 'HRMS';
@@ -2075,6 +2825,98 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+function addNessMessage(type, text) {
+    const messages = document.getElementById('ness-messages');
+    if (!messages) return null;
+    const message = document.createElement('div');
+    message.className = `ness-message ness-message-${type}`;
+    message.textContent = text;
+    messages.appendChild(message);
+    messages.scrollTop = messages.scrollHeight;
+    return message;
+}
+
+function setNessOpen(open) {
+    const panel = document.getElementById('ness-panel');
+    const launcher = document.getElementById('ness-launcher');
+    if (!panel || !launcher) return;
+    panel.hidden = !open;
+    panel.setAttribute('aria-hidden', String(!open));
+    launcher.setAttribute('aria-expanded', String(open));
+    if (open) document.getElementById('ness-input')?.focus();
+    else launcher.focus();
+}
+
+function initializeNessChat() {
+    const launcher = document.getElementById('ness-launcher');
+    const panel = document.getElementById('ness-panel');
+    const form = document.getElementById('ness-form');
+    const input = document.getElementById('ness-input');
+    const sendButton = document.getElementById('ness-send');
+    const suggestions = document.getElementById('ness-suggestions');
+    if (!launcher || !panel || !form || !input || !sendButton || !suggestions) return;
+
+    addNessMessage('assistant', 'Hi, I’m Ness. I can explain how to use this HR system and how its workflows operate. What would you like to know?');
+    let requestPending = false;
+    let conversationVersion = 0;
+
+    launcher.addEventListener('click', () => setNessOpen(panel.hidden));
+    document.getElementById('ness-close')?.addEventListener('click', () => setNessOpen(false));
+    document.getElementById('ness-clear')?.addEventListener('click', () => {
+        conversationVersion++;
+        document.getElementById('ness-messages').replaceChildren();
+        suggestions.hidden = false;
+        addNessMessage('assistant', 'Hi, I’m Ness. I can explain how to use this HR system and how its workflows operate. What would you like to know?');
+        input.value = '';
+        input.focus();
+    });
+
+    suggestions.querySelectorAll('[data-ness-prompt]').forEach(button => {
+        button.addEventListener('click', () => {
+            input.value = button.dataset.nessPrompt || '';
+            form.requestSubmit();
+        });
+    });
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (requestPending) return;
+        const message = input.value.trim();
+        if (!message) return;
+
+        requestPending = true;
+        const requestVersion = conversationVersion;
+        input.value = '';
+        input.disabled = true;
+        sendButton.disabled = true;
+        suggestions.hidden = true;
+        addNessMessage('user', message);
+        const typingMessage = addNessMessage('assistant', 'Ness is checking the system guide…');
+
+        try {
+            const result = await apiFetch('/ai/chat', {
+                method: 'POST',
+                body: JSON.stringify({ message })
+            });
+            if (requestVersion === conversationVersion) addNessMessage('assistant', result.reply);
+        } catch (error) {
+            if (requestVersion === conversationVersion) {
+                addNessMessage('error', `Ness could not respond: ${error.message}`);
+            }
+        } finally {
+            typingMessage?.remove();
+            requestPending = false;
+            input.disabled = false;
+            sendButton.disabled = false;
+            input.focus();
+        }
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !panel.hidden) setNessOpen(false);
+    });
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return '';
     try {
@@ -2085,6 +2927,63 @@ function formatDate(dateStr) {
     }
 }
 
+async function handleContractUpload(input) {
+    const file = input && input.files && input.files[0];
+    const employeeId = input?.dataset?.employeeId;
+    if (!file || !employeeId) return;
+
+    const button = input.parentElement?.querySelector('.contract-upload-btn');
+    if (button) {
+        const shortName = file.name.length > 18 ? file.name.substring(0, 15) + '...' : file.name;
+        button.disabled = true;
+        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading ' + shortName;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await apiFetch(`/employees/${employeeId}/2x2-photo`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (button) {
+            button.innerHTML = '<i class="fa-solid fa-check"></i> Uploaded';
+            button.disabled = false;
+        }
+        input.value = '';
+
+        const row = document.querySelector(`.employee-record-row[data-id="${employeeId}"]`);
+        if (row && response?.photo_path) {
+            row.dataset['2x2Photo'] = response.photo_path;
+        }
+
+        await Promise.all([loadOnboarding(), loadEmployees(), loadDashboardStats()]);
+
+        if (currentEmployeeDetailId && Number(currentEmployeeDetailId) === Number(employeeId)) {
+            viewEmployee(Number(employeeId));
+        }
+
+        alert(response.message || 'Contract Signed picture uploaded successfully.');
+    } catch (error) {
+        if (button) {
+            button.innerHTML = '<i class="fa-solid fa-upload"></i> Upload picture';
+            button.disabled = false;
+        }
+        alert('Failed to upload Contract Signed picture: ' + error.message);
+    }
+}
+
+async function viewContractSignedPicture(employeeId) {
+    if (!document.querySelector(`.employee-record-row[data-id="${employeeId}"]`)) await loadEmployees();
+    if (!document.querySelector(`.employee-record-row[data-id="${employeeId}"]`)) {
+        alert('Unable to find the employee record. Refresh the employee list and try again.');
+        return;
+    }
+    viewEmployee(Number(employeeId));
+}
+
 function statusBadge(status) {
     const map = {
         'Active': 'status-active',
@@ -2092,8 +2991,9 @@ function statusBadge(status) {
         'Pending': 'status-pending',
         'Interviewing': 'status-pending',
         'Onboarding': 'status-pending',
-        'In Progress': 'status-pending',
         'Completed': 'status-active',
+        'Complete': 'status-active',
+        'Unhired': 'status-rejected',
         'Rejected': 'status-rejected',
         'Inactive': 'status-rejected'
     };
@@ -2102,11 +3002,13 @@ function statusBadge(status) {
 }
 
 async function apiFetch(url, options = {}) {
+    const hasFormData = options.body instanceof FormData;
     const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getToken()}`,
+        ...(hasFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...authHeaders(),
         ...(options.headers || {})
     };
+    if (hasFormData && headers['Content-Type']) delete headers['Content-Type'];
 
     const targetUrl = window.getApiUrl(url);
     let res;
@@ -2131,35 +3033,102 @@ async function apiFetch(url, options = {}) {
 async function loadDashboardStats() {
     try {
         const stats = await apiFetch('/dashboard/stats');
-        document.getElementById('dash-total-emp').innerText = stats.totalEmployees || 0;
-        document.getElementById('dash-new-hires').innerText = stats.newHires || 0;
+        document.getElementById('dash-new-hires').innerText = stats.employeeDirectoryCount || 0;
         document.getElementById('dash-applicants').innerText = stats.totalApplicants || 0;
-        document.getElementById('dash-retention').innerText = (stats.retentionRate || 0) + '%';
-        document.getElementById('retention-value').innerText = (stats.retentionRate || 0) + '%';
-
-        // Render department distribution as a bar chart (live data)
-        const dist = stats.departmentDistribution || [];
+        document.getElementById('dash-completed-onboarding').innerText = stats.completedOnboardings || 0;
+        // Render employees grouped by their role.
+        const standardRoles = ['Driver', 'Staff', 'Cashier', 'Team Leader'];
+        const employeePositions = stats.employeePositionDistribution || [];
+        const positionCounts = new Map(employeePositions.map(item => [item.position.toLowerCase(), item.count]));
+        const dist = standardRoles.map(position => ({
+            position,
+            count: positionCounts.get(position.toLowerCase()) || 0
+        }));
+        employeePositions.forEach(item => {
+            if (!standardRoles.some(role => role.toLowerCase() === item.position.toLowerCase())) {
+                dist.push(item);
+            }
+        });
         const colors = ['var(--primary)', 'var(--secondary)', 'var(--accent)', 'var(--warning)', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
         const chartEl = document.getElementById('department-distribution');
-        const labelsEl = document.getElementById('department-labels');
 
-        if (!dist || dist.length === 0) {
-            chartEl.innerHTML = '<div style="color:#9CA3AF; align-self:center;">No department data yet.</div>';
-            labelsEl.innerHTML = '';
+        if (dist.every(item => item.count === 0)) {
+            chartEl.innerHTML = '<div style="color:#9CA3AF; align-self:center;">No employee data yet.</div>';
         } else {
             const maxCount = Math.max(...dist.map(d => d.count), 1);
             chartEl.innerHTML = dist.map((d, i) => `
-                <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                <button type="button" data-role="${escapeHtml(d.position)}" aria-label="View ${escapeHtml(d.count)} ${escapeHtml(d.position)} employees" style="flex:0 0 72px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:6px; height:100%; padding:0; border:0; background:transparent; cursor:pointer;" title="View ${escapeHtml(d.position)} employees">
                     <span style="font-size:12px; font-weight:600; color:#374151;">${escapeHtml(d.count)}</span>
-                    <div style="width:40px; height:${Math.max((d.count / maxCount) * 100, 6)}%; background:${colors[i % colors.length]}; border-radius:5px 5px 0 0;" title="${escapeHtml(d.department)}"></div>
-                </div>
+                    <div style="width:40px; height:${d.count ? Math.max((d.count / maxCount) * 100, 6) : 6}px; background:${colors[i % colors.length]}; border-radius:5px 5px 0 0;"></div>
+                    <span style="max-width:72px; color:#6B7280; font-size:12px; line-height:1.2; text-align:center; overflow-wrap:anywhere;">${escapeHtml(d.position)}</span>
+                </button>
             `).join('');
-            labelsEl.innerHTML = dist.map((d, i) => `
-                <span style="color:#6B7280;">${escapeHtml(d.department)}</span>
-            `).join('');
+            chartEl.querySelectorAll('button[data-role]').forEach(button => {
+                button.addEventListener('click', () => showEmployeeRole(button.dataset.role));
+            });
         }
+        await loadRecentActivities();
     } catch (err) {
         console.error('Failed to load dashboard stats:', err.message);
+    }
+}
+
+async function loadRecentActivities() {
+    const list = document.getElementById('recent-activities-list');
+    if (!list) return;
+
+    const count = document.getElementById('recent-activities-count');
+    const refreshButton = document.getElementById('recent-activities-refresh');
+    if (refreshButton) refreshButton.disabled = true;
+    list.setAttribute('aria-busy', 'true');
+
+    try {
+        const activities = await apiFetch('/activities/recent');
+        if (!Array.isArray(activities)) {
+            throw new Error('The activities response was not a list.');
+        }
+        if (count) count.textContent = String(activities.length);
+        if (!activities.length) {
+            list.innerHTML = '<div class="recent-activities-state"><i class="fa-regular fa-bell-slash" aria-hidden="true"></i><span>No activities recorded yet.</span></div>';
+            return;
+        }
+
+        list.innerHTML = activities.map(item => {
+            const date = item.created_at ? new Date(item.created_at) : null;
+            const occurredAt = date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : (item.created_at || '');
+            let relativeTime = occurredAt;
+            if (date && !Number.isNaN(date.getTime())) {
+                const difference = (date.getTime() - Date.now()) / 1000;
+                const [value, unit] = Math.abs(difference) < 3600
+                    ? [Math.round(difference / 60), 'minute']
+                    : Math.abs(difference) < 86400
+                        ? [Math.round(difference / 3600), 'hour']
+                        : [Math.round(difference / 86400), 'day'];
+                relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(value, unit);
+            }
+            const initials = (item.actor_name || 'User').trim().split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+            const role = item.actor_role
+                ? `<span class="recent-activity-role">${escapeHtml(item.actor_role)}</span>`
+                : '';
+            return `
+                <article class="recent-activity-item">
+                    <span class="recent-activity-avatar" aria-hidden="true">${escapeHtml(initials)}</span>
+                    <div class="recent-activity-content">
+                        <div class="recent-activity-description"><strong>${escapeHtml(item.actor_name || 'User')}</strong> ${escapeHtml(item.activity)}</div>
+                        <div class="recent-activity-meta">
+                            ${role}
+                            <time class="recent-activity-time" datetime="${escapeHtml(item.created_at || '')}" title="${escapeHtml(occurredAt)}">${escapeHtml(relativeTime)}</time>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }).join('');
+    } catch (err) {
+        list.innerHTML = `<div class="recent-activities-state"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span>Failed to load recent activities: ${escapeHtml(err.message)}</span></div>`;
+        console.error('Failed to load recent activities:', err.message);
+    } finally {
+        list.setAttribute('aria-busy', 'false');
+        if (refreshButton) refreshButton.disabled = false;
     }
 }
 
@@ -2204,11 +3173,121 @@ function closeAllDropdowns() {
         b.classList.remove('active');
         b.setAttribute('aria-expanded', 'false');
     });
+    closeNotificationPanel();
+}
+
+// ================= NOTIFICATIONS (header bell) =================
+function toggleNotifications(event) {
+    if (event) event.stopPropagation();
+    const panel = document.getElementById('notificationPanel');
+    const btn = document.getElementById('notificationBell');
+    if (!panel || !btn) return;
+
+    const isShowing = panel.classList.contains('show');
+    closeAllDropdowns();
+    if (!isShowing) {
+        panel.classList.add('show');
+        btn.classList.add('active');
+        btn.setAttribute('aria-expanded', 'true');
+        loadNotifications();
+    }
+}
+
+function closeNotificationPanel() {
+    const panel = document.getElementById('notificationPanel');
+    const btn = document.getElementById('notificationBell');
+    if (panel) panel.classList.remove('show');
+    if (btn) {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-expanded', 'false');
+    }
+}
+
+function updateNotificationBadge(unreadCount) {
+    const badge = document.getElementById('notification-badge');
+    const panelCount = document.getElementById('notification-panel-count');
+    const unread = Number(unreadCount) || 0;
+
+    if (badge) {
+        badge.textContent = unread > 99 ? '99+' : String(unread);
+        badge.classList.toggle('show', unread > 0);
+    }
+    if (panelCount) {
+        panelCount.textContent = unread === 1 ? '1 unread' : `${unread} unread`;
+    }
+}
+
+function notificationTimeAgo(value) {
+    if (!value) return '';
+    const then = new Date(value).getTime();
+    if (Number.isNaN(then)) return '';
+
+    const seconds = Math.floor((Date.now() - then) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return formatDate(value);
+}
+
+async function loadNotifications() {
+    const list = document.getElementById('notification-list');
+    if (!list) return;
+
+    try {
+        const data = await apiFetch('/announcements/mine');
+        const announcements = data.announcements || [];
+        updateNotificationBadge(data.unread_count || 0);
+
+        if (announcements.length === 0) {
+            list.innerHTML = '<div class="notification-empty">No announcements yet.</div>';
+            return;
+        }
+
+        list.innerHTML = announcements.slice(0, 8).map(a => `
+            <button type="button" class="notification-item${a.is_read ? '' : ' unread'}" onclick="openAnnouncementFromBell(${Number(a.id)})">
+                <span class="notification-item-icon"><i class="fa-solid fa-bullhorn"></i></span>
+                <span class="notification-item-body">
+                    <span class="notification-item-title">${escapeHtml(a.title)}</span>
+                    <span class="notification-item-text">${escapeHtml(a.content)}</span>
+                    <span class="notification-item-time">${escapeHtml(notificationTimeAgo(a.created_at))}</span>
+                </span>
+            </button>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load notifications:', err.message);
+        list.innerHTML = '<div class="notification-empty">Notifications are temporarily unavailable.</div>';
+    }
+}
+
+async function openAnnouncementFromBell(id) {
+    closeAllDropdowns();
+    showSection('announcements');
+
+    try {
+        await apiFetch(`/announcements/${id}/read`, { method: 'POST' });
+    } catch (err) {
+        console.error('Failed to mark announcement read:', err.message);
+    }
+    await Promise.all([loadNotifications(), loadAdminAnnouncements()]);
+}
+
+function openAnnouncementsFromBell() {
+    closeAllDropdowns();
+    showSection('announcements');
+    loadAdminAnnouncements();
 }
 
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('.user-dropdown-container')) {
+    if (!e.target.closest('.user-dropdown-container') && !e.target.closest('.notification-container')) {
         closeAllDropdowns();
+    }
+    if (!e.target.closest('#onboarding-sidebar-menu')) {
+        const onboardingMenu = document.getElementById('onboarding-sidebar-menu');
+        if (onboardingMenu) onboardingMenu.open = false;
     }
 });
 
@@ -2224,17 +3303,21 @@ function loadAdminProfile() {
 
     const initials = (user.name || 'AD').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-    if (document.getElementById('adminName')) document.getElementById('adminName').innerText = user.name || 'Admin User';
+    if (document.getElementById('adminName')) document.getElementById('adminName').innerText = user.name || 'Human Resources';
     if (document.getElementById('adminAvatar')) document.getElementById('adminAvatar').innerText = initials;
 
     // Inner dropdown card details
-    if (document.getElementById('dropdownName')) document.getElementById('dropdownName').innerText = user.name || 'Admin User';
+    if (document.getElementById('dropdownName')) document.getElementById('dropdownName').innerText = user.name || 'Human Resources';
     if (document.getElementById('dropdownEmail')) document.getElementById('dropdownEmail').innerText = user.email || 'admin@hrms.com';
     if (document.getElementById('dropdownAvatar')) document.getElementById('dropdownAvatar').innerText = initials;
     if (document.getElementById('dropdownRole')) {
         const roleEl = document.getElementById('dropdownRole');
-        roleEl.innerText = user.role === 'admin' ? 'Admin' : 'Employee';
-        roleEl.className = `dropdown-role-badge ${user.role === 'admin' ? 'badge-admin' : 'badge-employee'}`;
+        const isHrAccount = user.role === 'hr'
+            || (user.email || '').trim().toLowerCase() === 'phnhes@gmail.com';
+        const roleLabel = isHrAccount ? 'HR' : (user.role === 'admin' ? 'Admin' : 'Employee');
+        roleEl.innerText = roleLabel;
+        const roleClass = isHrAccount ? 'badge-hr' : (user.role === 'admin' ? 'badge-admin' : 'badge-employee');
+        roleEl.className = `dropdown-role-badge ${roleClass}`;
     }
 
     // Account settings fields
@@ -2276,7 +3359,7 @@ async function loadUserAccounts() {
         const users = await apiFetch('/users');
         userAccountCache = {};
         (users || []).forEach(u => { userAccountCache[u.id] = u; });
-        const nonAdminUsers = (users || []).filter(u => u.role !== 'admin' && u.email !== 'admin@gmail.com' && u.employee_id !== 'ADMIN001');
+        const nonAdminUsers = (users || []).filter(u => u.role !== 'admin' && u.email !== 'phnhes@gmail.com' && u.employee_id !== 'ADMIN001');
         if (nonAdminUsers.length === 0) {
             tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No user accounts found. Create one to get started.</td></tr>`;
             return;
@@ -2285,7 +3368,7 @@ async function loadUserAccounts() {
             <tr>
                 <td><strong>${escapeHtml(u.name)}</strong></td>
                 <td>${escapeHtml(u.email)}</td>
-                <td>${statusBadge(u.role === 'admin' ? 'Admin' : 'Employee')}</td>
+                <td>${statusBadge(u.role === 'admin' ? 'Admin' : (u.role === 'hr' ? 'HR' : 'Employee'))}</td>
                 <td>${escapeHtml(u.department || '-')}</td>
                 <td>${escapeHtml(u.employee_id || '-')}</td>
                 <td>${escapeHtml(u.position || '-')}</td>
@@ -2382,48 +3465,304 @@ async function saveUserAccount() {
 }
 
 // ================= EMPLOYEE MANAGEMENT =================
+let employeeRoleFilter = '';
+let employeeRecordsCache = [];
+
+function showEmployeeRole(role) {
+    employeeRoleFilter = role;
+    showSection('employees');
+    employeeRoleFilter = role;
+    document.querySelectorAll('#employee-sidebar-menu .sidebar-submenu a').forEach(link => link.classList.remove('active'));
+    if (role) {
+        document.querySelectorAll('#employee-role-links a').forEach(link => {
+            if (link.dataset.role === role) link.classList.add('active');
+        });
+    } else {
+        document.querySelector('#employee-sidebar-menu .sidebar-submenu > a')?.classList.add('active');
+    }
+    const heading = document.getElementById('employee-directory-heading');
+    if (heading) heading.textContent = role ? `${role} Employees` : 'Employee Directory';
+    loadEmployees();
+}
+
+function showEmployeeCategory(sectionId) {
+    if (!canAccessEmployeeStatusModules()) return;
+    showSection(sectionId);
+    loadEmployees();
+}
+
+function renderEmployeeRoleLinks(employees) {
+    const linksContainer = document.getElementById('employee-role-links');
+    if (!linksContainer) return;
+
+    const standardRoles = ['Driver', 'Cashier', 'Staff', 'Team Leader'];
+    const additionalRoles = [...new Set(
+        employees.map(employee => (employee.role || '').trim())
+            .filter(role => role && !standardRoles.some(standard => standard.toLowerCase() === role.toLowerCase()))
+    )].sort((left, right) => left.localeCompare(right));
+    const roles = [...standardRoles, ...additionalRoles];
+    linksContainer.replaceChildren(...roles.map(role => {
+        const link = document.createElement('a');
+        link.href = '#';
+        link.title = `${role} Employees`;
+        link.setAttribute('aria-label', `${role} Employees`);
+        link.dataset.role = role;
+        link.classList.toggle('active', employeeRoleFilter === role);
+        const icon = document.createElement('i');
+        icon.className = 'fa-solid fa-user-tag';
+        const label = document.createElement('span');
+        label.textContent = role;
+        link.append(icon, label);
+        link.addEventListener('click', event => {
+            event.preventDefault();
+            showEmployeeRole(role);
+        });
+        return link;
+    }));
+}
+
+function renderEmployeeRecordRow(emp, actions) {
+    return `
+        <tr class="employee-record-row" data-id="${emp.id}"
+            data-empid="${escapeHtml(emp.employee_id)}"
+            data-name="${escapeHtml(emp.name)}"
+            data-email="${escapeHtml(emp.email)}"
+            data-department="${escapeHtml(emp.department || 'General')}"
+            data-role="${escapeHtml(emp.role || '')}"
+            data-status="${escapeHtml(emp.status)}"
+            data-phone="${escapeHtml(emp.phone || '')}"
+            data-address="${escapeHtml(emp.address || '')}"
+            data-dob="${escapeHtml(emp.date_of_birth || '')}"
+            data-gender="${escapeHtml(emp.gender || '')}"
+            data-emergency="${escapeHtml(emp.emergency_contact || '')}"
+            data-age="${escapeHtml(emp.age || '')}"
+            data-placeofbirth="${escapeHtml(emp.place_of_birth || '')}"
+            data-tin="${escapeHtml(emp.tin || '')}"
+            data-civilstatus="${escapeHtml(emp.civil_status || '')}"
+            data-lastname="${escapeHtml(emp.last_name || '')}"
+            data-firstname="${escapeHtml(emp.first_name || '')}"
+            data-middlename="${escapeHtml(emp.middle_name || '')}"
+            data-sss="${escapeHtml(emp.sss_number || '')}"
+            data-pag-ibig="${escapeHtml(emp.pag_ibig_number || '')}"
+            data-nbi="${escapeHtml(emp.nbi_number || '')}"
+            data-emergency-name="${escapeHtml(emp.emergency_contact_name || '')}"
+            data-emergency-phone="${escapeHtml(emp.emergency_contact_phone || '')}"
+            data-id-photo="${escapeHtml(emp.id_photo_path || '')}"
+            data-2x2-photo="${escapeHtml(emp.id_picture_path || '')}"
+            data-resume="${escapeHtml(emp.resume_path || '')}"
+            data-sss-photo="${escapeHtml(emp.sss_photo_path || '')}"
+            data-pag-ibig-photo="${escapeHtml(emp.pag_ibig_photo_path || '')}"
+            data-nbi-photo="${escapeHtml(emp.nbi_photo_path || '')}"
+            data-health-card-photo="${escapeHtml(emp.health_card_photo_path || '')}"
+            data-psa-photo="${escapeHtml(emp.psa_photo_path || '')}"
+            data-contract-signed-photo="${escapeHtml(emp.id_picture_path || '')}"
+            data-applied-date="${escapeHtml(emp.applied_date || '')}">
+            <td>${escapeHtml(emp.employee_id)}</td>
+            <td><a href="javascript:void(0)" onclick="viewEmployee(${Number(emp.id)})" style="color:var(--primary); font-weight:600; text-decoration:none;">${escapeHtml(emp.name)}</a></td>
+            <td>${escapeHtml(emp.department || 'General')}</td>
+            <td>${escapeHtml(emp.role || '')}</td>
+            ${actions}
+        </tr>
+    `;
+}
+
 async function loadEmployees() {
     const tbody = document.getElementById('employee-table-body');
+    const completeTbody = document.getElementById('complete-employee-table-body');
+    const unhiredTbody = document.getElementById('unhired-employee-table-body');
+    if (!isHrDashboardAccount()) return;
     try {
         const employees = await apiFetch('/employees');
-        const nonAdminEmployees = (employees || []).filter(emp => emp.role !== 'admin' && emp.email !== 'admin@gmail.com' && emp.employee_id !== 'ADMIN001');
-        if (nonAdminEmployees.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No employees found.</td></tr>`;
+        const currentUser = getCurrentUser();
+        const isRestrictedHr = currentUser?.role === 'hr'
+            || (currentUser?.email || '').trim().toLowerCase() === 'phnhes@gmail.com';
+        const nonAdminEmployees = (employees || []).filter(emp =>
+            emp.role !== 'admin'
+            && emp.email !== 'phnhes@gmail.com'
+            && !['ADMIN001', 'ADMIN002'].includes(emp.employee_id)
+            && (!isRestrictedHr || emp.status !== 'Unhired')
+        );
+        employeeRecordsCache = nonAdminEmployees;
+        const completeEmployees = nonAdminEmployees.filter(employee => employee.status === 'Complete');
+        const unhiredEmployees = nonAdminEmployees.filter(employee => employee.status === 'Unhired');
+        renderEmployeeRoleLinks(nonAdminEmployees);
+        const canManageCategories = canAccessEmployeeStatusModules();
+        const actionHeading = document.getElementById('employee-actions-heading');
+        if (actionHeading) actionHeading.hidden = !canManageCategories;
+
+        const visibleEmployees = employeeRoleFilter
+            ? nonAdminEmployees.filter(employee => (employee.role || '').trim().toLowerCase() === employeeRoleFilter.toLowerCase())
+            : nonAdminEmployees;
+        tbody.innerHTML = visibleEmployees.length
+            ? visibleEmployees.map(emp => renderEmployeeRecordRow(emp, `
+                ${canManageCategories ? `<td>
+                    <button class="btn btn-success btn-sm" onclick="moveEmployeeToStatus(${Number(emp.id)}, 'Complete')">Complete</button>
+                    <button class="btn btn-danger btn-sm" onclick="moveEmployeeToStatus(${Number(emp.id)}, 'Unhired')">Unhired</button>
+                </td>` : ''}
+            `)).join('')
+            : `<tr><td colspan="${canManageCategories ? 5 : 4}" class="empty-state">${employeeRoleFilter ? `No ${escapeHtml(employeeRoleFilter)} employees found.` : 'No employees found.'}</td></tr>`;
+
+        if (completeTbody) {
+            completeTbody.innerHTML = completeEmployees.length
+                ? completeEmployees.map(emp => renderEmployeeRecordRow(emp, `
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="openEmployeeCertification(${Number(emp.id)})">View certificate</button>
+                        <div style="margin-top:6px;">${emp.certificate_received_at
+                            ? '<span class="status-badge status-active">Already received</span>'
+                            : '<span class="status-badge status-pending">Not received yet</span>'}</div>
+                    </td>
+                    <td><button class="btn btn-primary btn-sm" onclick="proceedEmployeeToOtherSystem(${Number(emp.id)})">Proceed</button></td>
+                `)).join('')
+                : `<tr><td colspan="6" class="empty-state">No employees marked complete.</td></tr>`;
+        }
+
+        if (unhiredTbody) {
+            unhiredTbody.innerHTML = unhiredEmployees.length
+                ? unhiredEmployees.map(emp => renderEmployeeRecordRow(emp, `
+                <td>${escapeHtml(emp.comments || 'No comment')}</td>
+            `)).join('')
+                : `<tr><td colspan="6" class="empty-state">No unhired employees.</td></tr>`;
+        }
+    } catch (err) {
+        const errorRow = `<tr><td colspan="6" class="empty-state" style="color:#DC2626;">Failed to load employees: ${escapeHtml(err.message)}</td></tr>`;
+        tbody.innerHTML = errorRow;
+        if (completeTbody) completeTbody.innerHTML = errorRow;
+        if (unhiredTbody) unhiredTbody.innerHTML = errorRow;
+    }
+}
+
+function openEmployeeCertification(employeeId) {
+    if (!canAccessEmployeeStatusModules()) return;
+    const employee = employeeRecordsCache.find(record => Number(record.id) === Number(employeeId));
+    if (!employee) {
+        alert('Employee record is no longer available. Refresh the employee list and try again.');
+        return;
+    }
+    const details = document.getElementById('employee-certification-details');
+    const receivedAt = employee.certificate_received_at
+        ? `Received on ${escapeHtml(formatDate(employee.certificate_received_at))}`
+        : 'Not received yet';
+    details.innerHTML = `
+        <h4>${escapeHtml(employee.name)} — Certificate of Employment</h4>
+        <p style="margin:8px 0;"><strong>Employee ID:</strong> ${escapeHtml(employee.employee_id)}</p>
+        <p style="margin:8px 0;"><strong>Certification status:</strong> ${employee.certificate_received_at
+            ? '<span class="status-badge status-active">Already received</span>'
+            : '<span class="status-badge status-pending">Not received yet</span>'}
+            <span style="margin-left:8px;color:var(--text-muted);">${receivedAt}</span></p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;">
+            <button type="button" class="btn btn-primary" onclick="downloadEmployeeCertification(${Number(employee.id)})">
+                <i class="fa-solid fa-download"></i> Download certificate
+            </button>
+            ${employee.certificate_received_at ? '' : `
+                <button type="button" class="btn btn-success" onclick="markEmployeeCertificationReceived(${Number(employee.id)})">
+                    <i class="fa-solid fa-check"></i> Mark as received
+                </button>
+            `}
+        </div>
+    `;
+}
+
+function proceedEmployeeToOtherSystem(employeeId) {
+    if (!canAccessEmployeeStatusModules()) return;
+    const employee = employeeRecordsCache.find(record => Number(record.id) === Number(employeeId));
+    if (!employee) {
+        alert('Employee record is no longer available. Refresh the employee list and try again.');
+        return;
+    }
+    alert('This employee’s information will be sent to the other system.');
+}
+
+function downloadEmployeeCertification(employeeId) {
+    if (!canAccessEmployeeStatusModules()) return;
+    const employee = employeeRecordsCache.find(record => Number(record.id) === Number(employeeId));
+    if (!employee) {
+        alert('Employee record is no longer available. Refresh the employee list and try again.');
+        return;
+    }
+
+    const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const certificateNumber = `COE-${employee.employee_id}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+    const employeeDepartment = String(employee.department || '').trim();
+    const certificateDepartment = !employeeDepartment || employeeDepartment.toLowerCase() === 'general'
+        ? 'Human Resources'
+        : employeeDepartment;
+    const safe = value => escapeHtml(value || 'Not specified').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const certificate = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>Certificate of Employment - ${safe(employee.name)}</title>
+<style>
+body{font-family:Georgia,'Times New Roman',serif;color:#1f2937;margin:0;padding:48px;background:#f3f4f6}
+.certificate{max-width:900px;min-height:560px;margin:auto;padding:70px;border:12px double #315b78;background:#fff;text-align:center;box-sizing:border-box}
+h1{font-size:38px;letter-spacing:4px;color:#244b66;margin:28px 0}
+.company{font:700 20px Arial,sans-serif;color:#244b66}
+.body{font-size:20px;line-height:1.8;margin:55px auto;max-width:660px}
+.name{font-size:28px;font-weight:bold;text-decoration:underline}
+.meta{font:14px Arial,sans-serif;color:#64748b}
+.signature{margin:56px auto 0;padding-top:10px;border-top:1px solid #64748b;width:260px;font:14px Arial,sans-serif}
+@media print{body{padding:0;background:#fff}.certificate{min-height:100vh;border-color:#315b78}}
+</style></head><body><main class="certificate">
+<div class="company">Toursphere</div>
+<h1>CERTIFICATE OF EMPLOYMENT</h1>
+<p class="body">This is to certify that <span class="name">${safe(employee.name)}</span> (Employee ID: ${safe(employee.employee_id)}) is employed with our organization as <strong>${safe(employee.role)}</strong> in the <strong>${safe(certificateDepartment)}</strong> department.</p>
+<p class="body">This certification is issued upon request for whatever lawful purpose it may serve.</p>
+<p>Issued this ${safe(issuedDate)}.</p>
+<div class="signature">Authorized Human Resources Representative</div>
+<p class="meta">Certificate No. ${safe(certificateNumber)}</p>
+</main></body></html>`;
+    const blob = new Blob([certificate], { type: 'text/html;charset=utf-8' });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeEmployeeId = String(employee.employee_id || employee.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+    link.href = objectUrl;
+    link.download = `certificate-of-employment-${safeEmployeeId}.html`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+async function markEmployeeCertificationReceived(employeeId) {
+    if (!canAccessEmployeeStatusModules()) return;
+    if (!confirm('Confirm that this employee has received the certificate?')) return;
+    try {
+        await apiFetch(`/employees/${employeeId}/certificate-received`, {
+            method: 'PUT',
+            body: JSON.stringify({ received: true })
+        });
+        await loadEmployees();
+        openEmployeeCertification(employeeId);
+    } catch (error) {
+        alert(`Failed to update certificate receipt status: ${error.message}`);
+    }
+}
+
+async function moveEmployeeToStatus(id, status) {
+    if (!canAccessEmployeeStatusModules()) return;
+    if (!['Complete', 'Unhired'].includes(status)) return;
+    const moduleName = status === 'Complete' ? 'Employee' : 'Unhired';
+    if (!confirm(`Move this employee to the ${moduleName} module?`)) return;
+    let comment = '';
+    if (status === 'Unhired') {
+        const enteredComment = prompt('Enter a comment for moving this employee to Unhired:');
+        if (enteredComment === null) return;
+        comment = enteredComment.trim();
+        if (!comment) {
+            alert('A comment is required to move an employee to Unhired.');
             return;
         }
-tbody.innerHTML = nonAdminEmployees.map(emp => `
-            <tr data-id="${emp.id}"
-                data-empid="${escapeHtml(emp.employee_id)}"
-                data-name="${escapeHtml(emp.name)}"
-                data-email="${escapeHtml(emp.email)}"
-                data-department="${escapeHtml(emp.department || 'General')}"
-                data-role="${escapeHtml(emp.role || '')}"
-                data-status="${escapeHtml(emp.status)}"
-                data-phone="${escapeHtml(emp.phone || '')}"
-                data-address="${escapeHtml(emp.address || '')}"
-                data-dob="${escapeHtml(emp.date_of_birth || '')}"
-                data-gender="${escapeHtml(emp.gender || '')}"
-                data-emergency="${escapeHtml(emp.emergency_contact || '')}"
-                data-age="${escapeHtml(emp.age || '')}"
-                data-placeofbirth="${escapeHtml(emp.place_of_birth || '')}"
-                data-tin="${escapeHtml(emp.tin || '')}"
-                data-civilstatus="${escapeHtml(emp.civil_status || '')}"
-                data-lastname="${escapeHtml(emp.last_name || '')}"
-                data-firstname="${escapeHtml(emp.first_name || '')}"
-                data-middlename="${escapeHtml(emp.middle_name || '')}">
-                <td>${escapeHtml(emp.employee_id)}</td>
-                <td><a href="javascript:void(0)" onclick="viewEmployee(${emp.id})" style="color:var(--primary); font-weight:600; text-decoration:none;">${escapeHtml(emp.name)}</a></td>
-                <td>${escapeHtml(emp.department || 'General')}</td>
-                <td>${escapeHtml(emp.role || '')}</td>
-                <td>${statusBadge(emp.status)}</td>
-                <td>
-                    <button class="btn btn-primary btn-sm" onclick="openEmployeeModal(${emp.id})">Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteEmployee(${emp.id})">Delete</button>
-                </td>
-            </tr>
-        `).join('');
+        if (comment.length > 2000) {
+            alert('The comment must be 2,000 characters or fewer.');
+            return;
+        }
+    }
+
+    try {
+        await apiFetch(`/employees/${id}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status, comment })
+        });
+        await loadEmployees();
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color:#DC2626;">Failed to load employees: ${escapeHtml(err.message)}</td></tr>`;
+        alert(`Failed to move employee to ${moduleName}: ${err.message}`);
     }
 }
 
@@ -2481,13 +3820,26 @@ document.getElementById('emp-dob').value = '';
 }
 
 function closeEmployeeDetail() {
+    employeeProfileRequest++;
+    employeePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    employeePreviewUrls = [];
+    currentEmployeeDetailId = null;
     document.getElementById('employeeDetailModal').classList.remove('show');
 }
 
+let employeeProfileRequest = 0;
+let employeePreviewUrls = [];
+let currentEmployeeDetailId = null;
+
 function viewEmployee(empId) {
-    const row = document.querySelector(`#employee-table-body tr[data-id="${empId}"]`);
+    currentEmployeeDetailId = Number(empId);
+    const row = document.querySelector(`.employee-record-row[data-id="${empId}"]`);
     if (!row) return;
 
+    employeeProfileRequest++;
+    const requestId = employeeProfileRequest;
+    employeePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    employeePreviewUrls = [];
     const d = row.dataset;
     const name = d.name || '-';
     const position = d.role || '-';
@@ -2495,14 +3847,14 @@ function viewEmployee(empId) {
 
     document.getElementById('detail-name').innerText = name;
     document.getElementById('detail-role-dept').innerText = (position ? `${position} · ` : '') + department;
-    document.getElementById('detail-avatar').innerText = (name !== '-' ? name : 'EM').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const avatar = document.getElementById('detail-avatar');
+    const initials = (name !== '-' ? name : 'EM').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    avatar.replaceChildren(document.createTextNode(initials));
+    if (d['2x2Photo']) loadEmployeeAvatarPhoto(empId, requestId, initials);
     document.getElementById('detail-empid').innerText = d.empId || '-';
     document.getElementById('detail-email').innerText = d.email || '-';
     document.getElementById('detail-department').innerText = department;
     document.getElementById('detail-role').innerText = position;
-    if (document.getElementById('detail-status-pill')) {
-        document.getElementById('detail-status-pill').innerHTML = statusBadge(d.status || 'Active');
-    }
     document.getElementById('detail-phone').innerText = d.phone || '-';
     document.getElementById('detail-address').innerText = d.address || '-';
     document.getElementById('detail-dob').innerText = d.dob ? formatDate(d.dob) : '-';
@@ -2515,8 +3867,91 @@ function viewEmployee(empId) {
     document.getElementById('detail-placeofbirth').innerText = d.placeofbirth || '-';
     document.getElementById('detail-tin').innerText = d.tin || '-';
     document.getElementById('detail-civilstatus').innerText = d.civilstatus || '-';
+    document.getElementById('detail-emergency-name').innerText = d.emergencyName || '-';
+    document.getElementById('detail-emergency-phone').innerText = d.emergencyPhone || '-';
+    document.getElementById('detail-sss').innerText = d.sss || '-';
+    document.getElementById('detail-pag-ibig').innerText = d.pagIbig || '-';
+    document.getElementById('detail-nbi').innerText = d.nbi || '-';
+    document.getElementById('detail-applied-date').innerText = d.appliedDate ? formatDate(d.appliedDate) : '-';
 
     document.getElementById('employeeDetailModal').classList.add('show');
+    const documents = [
+        ['idPhoto', 'id-photo', 'employee-id-photo-preview', 'Identification Document'],
+        ['2x2Photo', '2x2-photo', 'employee-2x2-photo-preview', '2×2 Picture'],
+        ['resume', 'resume', 'employee-resume-preview', 'Resume'],
+        ['sssPhoto', 'sss-photo', 'employee-sss-photo-preview', 'SSS Document Picture'],
+        ['pagIbigPhoto', 'pag-ibig-photo', 'employee-pag-ibig-photo-preview', 'Pag-IBIG Document Picture'],
+        ['nbiPhoto', 'nbi-photo', 'employee-nbi-photo-preview', 'NBI Document Picture'],
+        ['healthCardPhoto', 'health-card-photo', 'employee-health-card-photo-preview', 'Health Card Picture'],
+        ['psaPhoto', 'psa-photo', 'employee-psa-photo-preview', 'PSA Picture'],
+        ['contractSignedPhoto', 'contract-signed-photo', 'employee-contract-signed-photo-preview', 'Signed Contract Picture']
+    ];
+    documents.forEach(([dataKey, documentType, targetId, label]) => {
+        const preview = document.getElementById(targetId);
+        if (preview) preview.textContent = d[dataKey] ? 'Loading image...' : 'Not uploaded';
+        if (d[dataKey]) loadEmployeeDocumentPreview(empId, documentType, targetId, label, requestId);
+    });
+}
+
+async function loadEmployeeAvatarPhoto(employeeId, requestId, initials) {
+    try {
+        const response = await fetch(window.getApiUrl(`/employees/${employeeId}/2x2-photo`), { headers: authHeaders() });
+        if (!response.ok) throw new Error('Unable to load employee 2×2 photo.');
+        const imageUrl = URL.createObjectURL(await response.blob());
+        if (requestId !== employeeProfileRequest || !document.getElementById('employeeDetailModal').classList.contains('show')) {
+            URL.revokeObjectURL(imageUrl);
+            return;
+        }
+
+        employeePreviewUrls.push(imageUrl);
+        const image = document.createElement('img');
+        image.src = imageUrl;
+        image.alt = 'Employee 2×2 profile photo';
+        image.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+        image.addEventListener('error', () => {
+            if (requestId === employeeProfileRequest) {
+                image.remove();
+                document.getElementById('detail-avatar').textContent = initials;
+            }
+            URL.revokeObjectURL(imageUrl);
+            employeePreviewUrls = employeePreviewUrls.filter(url => url !== imageUrl);
+        }, { once: true });
+        document.getElementById('detail-avatar').replaceChildren(image);
+    } catch (error) {
+        if (requestId === employeeProfileRequest) {
+            console.error('Failed to load employee profile photo:', error.message);
+            document.getElementById('detail-avatar').textContent = initials;
+        }
+    }
+}
+
+async function loadEmployeeDocumentPreview(employeeId, documentType, targetId, label, requestId) {
+    try {
+        const response = await fetch(window.getApiUrl(`/employees/${employeeId}/${documentType}`), { headers: authHeaders() });
+        if (!response.ok) throw new Error(`Unable to load ${label.toLowerCase()}.`);
+        const imageUrl = URL.createObjectURL(await response.blob());
+        if (requestId !== employeeProfileRequest || !document.getElementById('employeeDetailModal').classList.contains('show')) {
+            URL.revokeObjectURL(imageUrl);
+            return;
+        }
+
+        employeePreviewUrls.push(imageUrl);
+        const preview = document.getElementById(targetId);
+        if (!preview) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'candidate-photo-zoom';
+        button.setAttribute('aria-label', `View larger ${label}`);
+        const image = document.createElement('img');
+        image.src = imageUrl;
+        image.alt = label;
+        button.appendChild(image);
+        button.addEventListener('click', () => openApplicantPhotoZoom(imageUrl, label));
+        preview.replaceChildren(button);
+    } catch (error) {
+        const preview = document.getElementById(targetId);
+        if (requestId === employeeProfileRequest && preview) preview.textContent = error.message;
+    }
 }
 
 function closeEmployeeModal() {
@@ -2574,13 +4009,11 @@ async function saveEmployee() {
 }
 
 async function deleteEmployee(id) {
-    if (!confirm('Delete this employee?')) return;
+    if (!confirm('Permanently delete this employee and their linked portal account? This action cannot be undone.')) return;
     try {
         await apiFetch(`/employees/${id}`, { method: 'DELETE' });
         alert('Employee deleted.');
-        await loadEmployees();
-        await loadUserAccounts();
-        await loadDashboardStats();
+        await Promise.all([loadEmployees(), loadUserAccounts(), loadDashboardStats()]);
     } catch (err) {
         alert('Failed to delete employee: ' + err.message);
     }
@@ -2589,28 +4022,37 @@ async function deleteEmployee(id) {
 // ================= APPLICANT MANAGEMENT =================
 let applicantRecords = [];
 
-async function loadApplicants() {
-    const tbody = document.getElementById('applicant-table-body');
-    try {
-        const applicants = await apiFetch('/applicants');
-        applicantRecords = applicants || [];
-        if (applicantRecords.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No applicants found.</td></tr>`;
-            return;
-        }
-        tbody.innerHTML = applicantRecords.map(app => `
+function renderApplicantRows(applicants, showComments = false) {
+    return applicants.map(app => {
+        const commentsText = (app.comments || '').trim();
+        return `
             <tr>
                 <td><button type="button" class="candidate-name-link" onclick="openApplicantDetails(${Number(app.id)})">${escapeHtml(app.name)}</button></td>
                 <td>${escapeHtml(app.position || 'Not specified')}</td>
                 <td>${escapeHtml(formatDate(app.applied_date))}</td>
-                <td>
-                    <button class="btn btn-success btn-sm" onclick="hireApplicant(${Number(app.id)})">Hire</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteApplicant(${Number(app.id)})">Delete</button>
-                </td>
+                ${showComments ? `<td>${escapeHtml(commentsText || 'No comments')}</td>` : ''}
             </tr>
-        `).join('');
+        `;
+    }).join('');
+}
+
+async function loadApplicants() {
+    const tbody = document.getElementById('applicant-table-body');
+    const notQualifiedTbody = document.getElementById('not-qualified-applicant-table-body');
+    try {
+        const applicants = await apiFetch('/applicants');
+        applicantRecords = applicants || [];
+        const notQualifiedApplicants = applicantRecords.filter(app => app.status === 'Rejected');
+        const pipelineApplicants = applicantRecords.filter(app => !['Rejected', 'Hired', 'Interviewing'].includes(app.status));
+        tbody.innerHTML = pipelineApplicants.length
+            ? renderApplicantRows(pipelineApplicants)
+            : `<tr><td colspan="3" class="empty-state">No applicants found in the pipeline.</td></tr>`;
+        notQualifiedTbody.innerHTML = notQualifiedApplicants.length
+            ? renderApplicantRows(notQualifiedApplicants, true)
+            : `<tr><td colspan="4" class="empty-state">No applicants marked as not qualified.</td></tr>`;
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color:#DC2626;">Failed to load applicants: ${escapeHtml(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" class="empty-state" style="color:#DC2626;">Failed to load applicants: ${escapeHtml(err.message)}</td></tr>`;
+        notQualifiedTbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color:#DC2626;">Failed to load applicants: ${escapeHtml(err.message)}</td></tr>`;
     }
 }
 
@@ -2622,7 +4064,7 @@ function clearApplicantPreviewUrls() {
     applicantPreviewUrls = [];
 }
 
-async function openApplicantDetails(id) {
+async function openApplicantDetails(id, source = 'applicants') {
     const requestId = ++applicantDetailsRequest;
     clearApplicantPreviewUrls();
     const modal = document.getElementById('applicantDetailsModal');
@@ -2656,6 +4098,9 @@ async function openApplicantDetails(id) {
         ['Place of Birth', applicant.place_of_birth],
         ['Civil Status', applicant.civil_status],
         ['TIN', applicant.tin],
+        ['SSS Number', applicant.sss_number],
+        ['Pag-IBIG Number', applicant.pag_ibig_number],
+        ['NBI Number', applicant.nbi_number],
         ['Home Address', applicant.address],
         ['Emergency Contact Name', applicant.emergency_contact_name || applicant.emergency_contact],
         ['Emergency Contact Phone Number', applicant.emergency_contact_phone],
@@ -2667,27 +4112,54 @@ async function openApplicantDetails(id) {
     const photosMarkup = `
         <div class="candidate-photo-preview"><span>Identification Document</span><div class="candidate-photo-frame" id="applicant-id-photo-preview">${applicant.id_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
         <div class="candidate-photo-preview"><span>2×2 Picture</span><div class="candidate-photo-frame square" id="applicant-2x2-photo-preview">${applicant.id_picture_path ? 'Loading image...' : 'Not uploaded'}</div></div>
-        <div class="candidate-photo-preview"><span>Resume / ID Photo</span><div class="candidate-photo-frame" id="applicant-resume-preview">${applicant.resume_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+        <div class="candidate-photo-preview"><span>Resume</span><div class="candidate-photo-frame" id="applicant-resume-preview">${applicant.resume_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+        <div class="candidate-photo-preview"><span>SSS Document Picture</span><div class="candidate-photo-frame" id="applicant-sss-photo-preview">${applicant.sss_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+        <div class="candidate-photo-preview"><span>Pag-IBIG Document Picture</span><div class="candidate-photo-frame" id="applicant-pag-ibig-photo-preview">${applicant.pag_ibig_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+        <div class="candidate-photo-preview"><span>NBI Document Picture</span><div class="candidate-photo-frame" id="applicant-nbi-photo-preview">${applicant.nbi_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+        <div class="candidate-photo-preview"><span>Health Card Picture</span><div class="candidate-photo-frame" id="applicant-health-card-photo-preview">${applicant.health_card_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+        <div class="candidate-photo-preview"><span>PSA Picture</span><div class="candidate-photo-frame" id="applicant-psa-photo-preview">${applicant.psa_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+    `;
+    const commentsBox = source === 'interview-schedule' || applicant.status === 'Rejected' ? '' : `
+        <div id="applicant-rejection-form-${Number(applicant.id)}" hidden>
+            <div class="form-group" style="margin-top:18px; margin-bottom:0;">
+                <label for="rejection-comments">Comment</label>
+                <textarea id="rejection-comments" class="form-control" rows="4" placeholder="Enter reason for disqualification..."></textarea>
+            </div>
+            <div class="candidate-decision-actions">
+                <button type="button" class="btn btn-danger" onclick="recordApplicantDecision(${Number(applicant.id)}, 'Rejected')">Confirm Not Qualified</button>
+            </div>
+        </div>
+    `;
+    const decisionActions = source === 'interview-schedule' || applicant.status === 'Rejected' ? '' : `
+        <div class="candidate-decision-actions">
+            <button type="button" class="btn btn-danger" onclick="showApplicantRejectionForm(${Number(applicant.id)})">Not Qualified</button>
+            <button type="button" class="btn btn-primary" onclick="recordApplicantDecision(${Number(applicant.id)}, 'Interviewing')"><i class="fa-solid fa-arrow-right"></i> Proceed to Interview</button>
+        </div>
     `;
     content.innerHTML = `
         <div class="candidate-details-grid">${fieldsMarkup}</div>
         <div class="candidate-document-previews">${photosMarkup}</div>
-        <div class="candidate-document-actions">
-            <button type="button" class="btn btn-sm" onclick="openApplicantPhotoPreview('applicant-id-photo-preview', 'Identification Document')" ${applicant.id_photo_path ? '' : 'disabled'}>Identification Document</button>
-            <button type="button" class="btn btn-sm" onclick="openApplicantPhotoPreview('applicant-2x2-photo-preview', '2×2 Picture')" ${applicant.id_picture_path ? '' : 'disabled'}>2×2 Picture</button>
-            <button type="button" class="btn btn-sm" onclick="openApplicantPhotoPreview('applicant-resume-preview', 'Resume / ID Photo')" ${applicant.resume_path ? '' : 'disabled'}>Resume / ID Photo</button>
-        </div>
-        <div class="candidate-decision-actions">
-            <button type="button" class="btn btn-danger" onclick="recordApplicantDecision(${Number(applicant.id)}, 'Rejected')">Not Qualified</button>
-            <button type="button" class="btn btn-primary" onclick="recordApplicantDecision(${Number(applicant.id)}, 'Interviewing')"><i class="fa-solid fa-arrow-right"></i> Proceed to Interview</button>
-        </div>
+        ${commentsBox}
+        ${decisionActions}
     `;
 
     const previewTasks = [];
     if (applicant.id_photo_path) previewTasks.push(loadApplicantPhotoPreview(id, 'id-photo', 'applicant-id-photo-preview', 'Identification Document', requestId));
     if (applicant.id_picture_path) previewTasks.push(loadApplicantPhotoPreview(id, '2x2-photo', 'applicant-2x2-photo-preview', '2×2 Picture', requestId));
-    if (applicant.resume_path) previewTasks.push(loadApplicantPhotoPreview(id, 'resume', 'applicant-resume-preview', 'Resume / ID Photo', requestId));
+    if (applicant.resume_path) previewTasks.push(loadApplicantPhotoPreview(id, 'resume', 'applicant-resume-preview', 'Resume', requestId));
+    if (applicant.sss_photo_path) previewTasks.push(loadApplicantPhotoPreview(id, 'sss-photo', 'applicant-sss-photo-preview', 'SSS Document Picture', requestId));
+    if (applicant.pag_ibig_photo_path) previewTasks.push(loadApplicantPhotoPreview(id, 'pag-ibig-photo', 'applicant-pag-ibig-photo-preview', 'Pag-IBIG Document Picture', requestId));
+    if (applicant.nbi_photo_path) previewTasks.push(loadApplicantPhotoPreview(id, 'nbi-photo', 'applicant-nbi-photo-preview', 'NBI Document Picture', requestId));
+    if (applicant.health_card_photo_path) previewTasks.push(loadApplicantPhotoPreview(id, 'health-card-photo', 'applicant-health-card-photo-preview', 'Health Card Picture', requestId));
+    if (applicant.psa_photo_path) previewTasks.push(loadApplicantPhotoPreview(id, 'psa-photo', 'applicant-psa-photo-preview', 'PSA Picture', requestId));
     await Promise.all(previewTasks);
+}
+
+function showApplicantRejectionForm(id) {
+    const rejectionForm = document.getElementById(`applicant-rejection-form-${Number(id)}`);
+    if (!rejectionForm) return;
+    rejectionForm.hidden = false;
+    document.getElementById('rejection-comments').focus();
 }
 
 async function loadApplicantPhotoPreview(id, documentType, targetId, label, requestId) {
@@ -2749,21 +4221,31 @@ function closeApplicantDetails() {
 }
 
 async function recordApplicantDecision(id, decision) {
-    if (decision === 'Rejected' && !confirm('Mark this candidate as Not Qualified?')) return;
-    try {
-        await apiFetch(`/applicants/${id}/decision`, { method: 'POST', body: JSON.stringify({ decision }) });
-        if (decision === 'Interviewing') {
-            const applicant = applicantRecords.find(record => Number(record.id) === Number(id));
-            closeApplicantDetails();
-            showSection('interviews');
-            document.getElementById('interview-applicant').value = String(id);
-            document.getElementById('interview-applicant-name').value = applicant ? applicant.name : '';
-            document.getElementById('interview-date').focus();
-        } else {
-            closeApplicantDetails();
-            await loadApplicants();
-            alert('Candidate marked as Not Qualified.');
+    if (decision === 'Rejected') {
+        const commentsValue = document.getElementById('rejection-comments')?.value.trim() || '';
+        if (!commentsValue) {
+            alert('Please provide a reason for disqualification in the Comments field before marking the applicant as Not Qualified.');
+            const textarea = document.getElementById('rejection-comments');
+            if (textarea) textarea.focus();
+            return;
         }
+
+        try {
+            await apiFetch(`/applicants/${id}/decision`, { method: 'POST', body: JSON.stringify({ decision, comments: commentsValue }) });
+            closeApplicantDetails();
+            await Promise.all([loadApplicants(), loadInterviews(), loadDashboardStats()]);
+            alert('Candidate marked as Not Qualified.');
+        } catch (error) {
+            alert('Unable to save applicant decision: ' + error.message);
+        }
+        return;
+    }
+
+    try {
+        await apiFetch(`/applicants/${id}/decision`, { method: 'POST', body: JSON.stringify({ decision, comments: '' }) });
+        closeApplicantDetails();
+        await loadApplicants();
+        beginApplicantInterview(id);
     } catch (error) {
         alert('Unable to save applicant decision: ' + error.message);
     }
@@ -2879,7 +4361,7 @@ async function hireApplicant(id) {
     if (!confirm('Move this applicant to employees? This will also create their portal login and an onboarding checklist.')) return;
     try {
         const data = await apiFetch(`/applicants/${id}/hire`, { method: 'POST' });
-        alert(`${data.message}\n\nPortal login:\nEmail: ${data.email || '-'}\nPassword: ${data.default_password || 'changeme123'}\n\nThey can sign in at index.html with these credentials.`);
+        alert(`${data.message}\n\nPortal login:\nEmail: ${data.email || '-'}\n${data.temporary_password ? `Temporary password: ${data.temporary_password}\n` : ''}They can sign in at index.html with these credentials.`);
         await loadApplicants();
         await loadEmployees();
         await loadOnboarding();
@@ -2922,33 +4404,71 @@ function formatInterviewDateTime(value) {
 
 async function loadInterviews() {
     const tbody = document.getElementById('interview-table-body');
-    if (!tbody) return;
+    const outcomeTbody = document.getElementById('interview-outcome-table-body');
+    if (!tbody || !outcomeTbody) return;
     try {
         const interviews = await apiFetch('/interviews');
-        if (!interviews || interviews.length === 0) {
+        const allInterviews = interviews || [];
+        const outcomeStatuses = ['Did Not Pass the Interview', 'No Show'];
+        const outcomeInterviews = allInterviews.filter(interview => outcomeStatuses.includes(interview.status));
+        const activeInterviews = allInterviews.filter(interview => !outcomeStatuses.includes(interview.status));
+        if (activeInterviews.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No interviews scheduled.</td></tr>';
-            return;
+        } else {
+            tbody.innerHTML = renderInterviewRows(activeInterviews, true);
         }
-        const statuses = ['Scheduled', 'Completed', 'Cancelled', 'No Show'];
-        tbody.innerHTML = interviews.map(interview => `
-            <tr>
-                <td>${escapeHtml(interview.applicant_name)}</td>
-                <td>${escapeHtml(interview.applicant_position || 'Not specified')}</td>
-                <td>${escapeHtml(formatInterviewDateTime(interview.scheduled_at))}</td>
-                <td>${escapeHtml(interview.interviewer)}</td>
-                <td>${escapeHtml(interview.location || 'Not specified')}</td>
-                <td>${escapeHtml(interview.notes || 'Not provided')}</td>
-                <td class="interview-status-cell">
-                    <select id="interview-status-${Number(interview.id)}" class="form-control">
-                        ${statuses.map(status => `<option value="${status}" ${interview.status === status ? 'selected' : ''}>${status}</option>`).join('')}
-                    </select>
-                    <button class="btn btn-sm btn-primary" style="margin-top:6px;" onclick="updateInterviewStatus(${Number(interview.id)})">Update</button>
-                </td>
-            </tr>
-        `).join('');
+
+        outcomeTbody.innerHTML = outcomeInterviews.length
+            ? renderInterviewRows(outcomeInterviews, false)
+            : '<tr><td colspan="7" class="empty-state">No applicants did not pass or miss their interview.</td></tr>';
     } catch (error) {
         tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:#DC2626;">Failed to load interviews: ${escapeHtml(error.message)}</td></tr>`;
+        outcomeTbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:#DC2626;">Failed to load interview outcomes: ${escapeHtml(error.message)}</td></tr>`;
     }
+}
+
+function renderInterviewRows(interviews, allowStatusUpdate) {
+    const statuses = ['Completed', 'Did Not Pass the Interview', 'No Show'];
+    return interviews.map(interview => {
+            const applicantId = Number(interview.applicant_id);
+            const currentStatus = statuses.includes(interview.status) ? interview.status : '';
+            const candidateCell = applicantId
+                ? `<button type="button" class="candidate-name-link" onclick="openApplicantDetails(${applicantId}, 'interview-schedule')">${escapeHtml(interview.applicant_name || 'Applicant')}</button>`
+                : `<span>${escapeHtml(interview.applicant_name || 'Applicant')}</span>`;
+            const statusCell = allowStatusUpdate ? `
+                <select id="interview-status-${Number(interview.id)}" class="form-control">
+                    <option value="" disabled ${currentStatus ? '' : 'selected'}>Choose status...</option>
+                    ${statuses.map(status => `<option value="${status}" ${currentStatus === status ? 'selected' : ''}>${status}</option>`).join('')}
+                </select>
+                <button class="btn btn-sm btn-primary" style="margin-top:6px;" onclick="updateInterviewStatus(${Number(interview.id)})">Update</button>
+            ` : escapeHtml(interview.status);
+
+            return `
+                <tr>
+                    <td>${candidateCell}</td>
+                    <td>${escapeHtml(interview.applicant_position || 'Not specified')}</td>
+                    <td>${escapeHtml(formatInterviewDateTime(interview.scheduled_at))}</td>
+                    <td>${escapeHtml(interview.interviewer)}</td>
+                    <td>${escapeHtml(interview.location || 'Not specified')}</td>
+                    <td>${escapeHtml(interview.notes || 'Not provided')}</td>
+                    <td class="interview-status-cell">${statusCell}</td>
+                </tr>
+            `;
+        }).join('');
+}
+
+function beginApplicantInterview(id) {
+    const applicant = applicantRecords.find(record => Number(record.id) === Number(id));
+    if (!applicant || applicant.status !== 'Interviewing') {
+        alert('This applicant is no longer awaiting interview scheduling.');
+        return;
+    }
+
+    showSection('interviews');
+    document.getElementById('interview-form').reset();
+    document.getElementById('interview-applicant').value = String(id);
+    document.getElementById('interview-applicant-name').value = applicant.name || '';
+    document.getElementById('interview-date').focus();
 }
 
 async function scheduleInterview(event) {
@@ -2972,7 +4492,7 @@ async function scheduleInterview(event) {
     try {
         const result = await apiFetch('/interviews', { method: 'POST', body: JSON.stringify(payload) });
         form.reset();
-        await loadInterviews();
+        await Promise.all([loadInterviews(), loadApplicants()]);
         alert(result.email_sent
             ? 'Interview scheduled. All interview details were emailed to the applicant.'
             : 'Interview scheduled, but the email could not be sent. Check the applicant email address and SMTP settings.');
@@ -2986,35 +4506,29 @@ async function scheduleInterview(event) {
 async function updateInterviewStatus(id) {
     const status = document.getElementById(`interview-status-${id}`).value;
     try {
-        await apiFetch(`/interviews/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
-        await loadInterviews();
+        const result = await apiFetch(`/interviews/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+        await Promise.all([
+            loadInterviews(),
+            loadApplicants(),
+            loadEmployees(),
+            loadUserAccounts(),
+            loadOnboarding(),
+            loadDashboardStats()
+        ]);
+        if (result.onboarding) {
+            alert(`${result.message}\n\nEmployee ID: ${result.onboarding.employee_id}\nPortal email: ${result.onboarding.email}`);
+        }
     } catch (error) {
         alert('Failed to update interview status: ' + error.message);
-    }
-}
-
-async function loadOnboardingEmployees() {
-    try {
-        const employees = await apiFetch('/employees');
-        const startSel = document.getElementById('onb-start-employee');
-        const taskSel = document.getElementById('onb-task-employee');
-        if (!startSel || !taskSel) return;
-
-        const opts = (employees || []).filter(e => e.role !== 'admin' && e.email !== 'admin@gmail.com' && e.employee_id !== 'ADMIN001').map(e =>
-            `<option value="${escapeHtml(e.employee_id)}">${escapeHtml(e.name)} (${escapeHtml(e.employee_id)})</option>`
-        ).join('');
-
-        startSel.innerHTML = '<option value="">Select an employee...</option>' + opts;
-        taskSel.innerHTML = '<option value="">Select an employee...</option>' + opts;
-    } catch (err) {
-        console.error('Failed to load onboarding employees:', err.message);
     }
 }
 
 function toggleOnboardingCard(cardId) {
     const card = document.getElementById(cardId);
     if (!card) return;
-    card.classList.toggle('expanded');
+    const shouldExpand = !card.classList.contains('expanded');
+    closeOnboardingChecklists();
+    if (shouldExpand) card.classList.add('expanded');
     const isExpanded = card.classList.contains('expanded');
     const header = card.querySelector('.onb-card-header');
     if (header) header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
@@ -3027,25 +4541,26 @@ async function loadOnboarding() {
     try {
         const data = await apiFetch('/onboarding');
         const summary = data.summary || [];
-        const stats = data.stats || {};
-
-        // Stats cards
-        if (document.getElementById('onb-active-count')) document.getElementById('onb-active-count').innerText = stats.activeOnboardings || summary.length || 0;
-        if (document.getElementById('onb-completed-count')) document.getElementById('onb-completed-count').innerText = stats.completedTasks || 0;
-        if (document.getElementById('onb-avg-progress')) document.getElementById('onb-avg-progress').innerText = (stats.averageProgress || 0) + '%';
 
         if (!summary || summary.length === 0) {
-            summaryEl.innerHTML = `<div class="empty-state">No onboarding checklists yet. Start one for a new hire above.</div>`;
+            summaryEl.innerHTML = `<div class="empty-state">No onboarding checklists yet.</div>`;
             return;
         }
+
+        const expandedEmployeeCodes = new Set(
+            [...summaryEl.querySelectorAll('.onboarding-card.expanded')]
+                .map(card => card.dataset.employeeCode)
+                .filter(Boolean)
+        );
 
         // Build per-employee collapsible modern cards
         summaryEl.innerHTML = summary.map((grp, idx) => {
             const cardId = `onb-card-${idx}`;
             const initials = (grp.emp_name || 'E').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+            const isExpanded = expandedEmployeeCodes.has(String(grp.emp_code));
             return `
-                <div class="onboarding-card" id="${cardId}">
-                    <div class="onb-card-header" onclick="toggleOnboardingCard('${cardId}')" role="button" aria-expanded="false">
+                <div class="onboarding-card${isExpanded ? ' expanded' : ''}" id="${cardId}" data-employee-code="${escapeHtml(grp.emp_code)}">
+                    <div class="onb-card-header" onclick="toggleOnboardingCard('${cardId}')" role="button" aria-expanded="${isExpanded ? 'true' : 'false'}">
                         <div class="onb-user-info">
                             <div class="onb-avatar">${initials}</div>
                             <div class="onb-user-details">
@@ -3083,6 +4598,19 @@ async function loadOnboarding() {
                             <tbody>
                                 ${grp.tasks.map(t => {
                                     const statusClass = t.status ? t.status.replace(/\s+/g, '-') : 'Pending';
+                                    const dueCell = `<span class="onb-due-badge"><i class="fa-solid fa-calendar"></i> ${escapeHtml(formatDate(t.due_date) || 'No due date')}</span>`;
+                                    const actionButtons = t.task === 'Contract Signed'
+                                        ? grp.contract_signed_photo
+                                            ? `<button type="button" class="btn btn-sm" onclick="event.stopPropagation(); viewContractSignedPicture(${Number(grp.employee_id)})" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#EAF4F1; color:var(--primary); border:1px solid #CDE4E0;"><i class="fa-solid fa-eye"></i> See the Picture</button>`
+                                            : `
+                                                <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+                                                    <button type="button" class="btn btn-sm contract-upload-btn" onclick="event.stopPropagation(); this.parentElement.querySelector('input[type=file]').click();" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#EAF4F1; color:var(--primary); border:1px solid #CDE4E0;">
+                                                        <i class="fa-solid fa-upload"></i> Upload picture
+                                                    </button>
+                                                    <input type="file" accept="image/*" data-employee-id="${Number(grp.employee_id)}" style="display:none;" onchange="handleContractUpload(this)">
+                                                </div>
+                                            `
+                                        : '';
                                     return `
                                     <tr class="onb-task-row">
                                         <td>
@@ -3092,19 +4620,16 @@ async function loadOnboarding() {
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="onb-due-badge"><i class="fa-solid fa-calendar"></i> ${escapeHtml(formatDate(t.due_date) || 'No due date')}</span>
+                                            ${dueCell}
                                         </td>
                                         <td>
                                             <select class="onb-status-select ${statusClass}" data-status="${escapeHtml(t.status)}" onchange="updateOnboardingTaskStatus(${t.id}, this.value)">
                                                 <option value="Pending" ${t.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                                <option value="In Progress" ${t.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                                                 <option value="Completed" ${t.status === 'Completed' ? 'selected' : ''}>Completed</option>
                                             </select>
                                         </td>
                                         <td style="text-align:right;">
-                                            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteOnboardingTask(${t.id})" style="padding:6px 12px; font-size:12px; border-radius:6px;">
-                                                <i class="fa-solid fa-trash-can"></i> Delete
-                                            </button>
+                                            ${actionButtons}
                                         </td>
                                     </tr>
                                 `;
@@ -3120,45 +4645,35 @@ async function loadOnboarding() {
     }
 }
 
-async function startOnboardingChecklist() {
-    const empCode = document.getElementById('onb-start-employee').value;
-    if (!empCode) { alert('Please select an employee first.'); return; }
+async function loadCompletedOnboarding() {
+    const tbody = document.getElementById('completed-onboarding-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading completed onboarding...</td></tr>';
 
     try {
-        const data = await apiFetch(`/onboarding/employees/${empCode}/start`, { method: 'POST' });
-        alert(data.message || 'Onboarding checklist started.');
-        await loadOnboarding();
-    } catch (err) {
-        alert('Failed to start onboarding: ' + err.message);
-    }
-}
-
-async function addOnboardingTask() {
-    const sel = document.getElementById('onb-task-employee');
-    const empCode = sel.value;
-    const task = document.getElementById('onb-task-text').value.trim();
-    const due_date = document.getElementById('onb-task-due').value;
-    const status = document.getElementById('onb-task-status').value;
-
-    if (!empCode) { alert('Please select an employee.'); return; }
-    if (!task) { alert('Please enter a task description.'); return; }
-
-    // Find the employee's DB id from the select options (we store employee_id as value)
-    const emp = (await apiFetch('/employees')).find(e => e.employee_id === empCode);
-    if (!emp) { alert('Employee not found.'); return; }
-
-    try {
-        await apiFetch('/onboarding', {
-            method: 'POST',
-            body: JSON.stringify({ employee_id: emp.id, task, due_date, status })
+        const data = await apiFetch('/onboarding');
+        const completedEmployees = (data.summary || []).filter(group => {
+            const taskCount = Number(group.task_count) || 0;
+            return taskCount > 0 && Number(group.completed_count) === taskCount;
         });
-        alert('Onboarding task added.');
-        document.getElementById('onb-task-text').value = '';
-        document.getElementById('onb-task-due').value = '';
-        document.getElementById('onb-task-status').value = 'Pending';
-        await loadOnboarding();
-    } catch (err) {
-        alert('Failed to add task: ' + err.message);
+
+        if (completedEmployees.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No employees have completed onboarding yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = completedEmployees.map(group => `
+            <tr>
+                <td>${escapeHtml(group.emp_name)}</td>
+                <td>${escapeHtml(group.emp_code)}</td>
+                <td>${escapeHtml(group.emp_department || 'General')}</td>
+                <td>${escapeHtml(group.emp_role || '-')}</td>
+                <td>${Number(group.completed_count)} of ${Number(group.task_count)}</td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Failed to load completed onboarding:', error.message);
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:#DC2626;">Failed to load completed onboarding: ${escapeHtml(error.message)}</td></tr>`;
     }
 }
 
@@ -3168,7 +4683,7 @@ async function updateOnboardingTaskStatus(id, status) {
             method: 'PUT',
             body: JSON.stringify({ status })
         });
-        await loadOnboarding();
+        await Promise.all([loadOnboarding(), loadDashboardStats()]);
     } catch (err) {
         alert('Failed to update task: ' + err.message);
         await loadOnboarding();
@@ -3180,7 +4695,7 @@ async function deleteOnboardingTask(id) {
     try {
         await apiFetch(`/onboarding/${id}`, { method: 'DELETE' });
         alert('Onboarding task deleted.');
-        await loadOnboarding();
+        await Promise.all([loadOnboarding(), loadDashboardStats()]);
     } catch (err) {
         alert('Failed to delete task: ' + err.message);
     }
@@ -3214,6 +4729,7 @@ async function autoRefreshData() {
             loadApplicants(),
             loadInterviews(),
             loadAdminAnnouncements(),
+            loadNotifications(),
             loadOnboarding()
         ]);
         console.log('Dashboard data refreshed.');
@@ -3317,6 +4833,7 @@ async function publishAnnouncement(e) {
         }
         resetAnnouncementForm();
         loadAdminAnnouncements();
+        loadNotifications();
     } catch (err) {
         alert('Failed to save announcement: ' + err.message);
     }
@@ -3338,27 +4855,45 @@ async function deleteAnnouncement(id) {
 // ================= INITIALIZATION =================
 window.onload = function() {
     protectPage('admin');
+    initializeNessChat();
+    const canManageEmployeeCategories = canAccessEmployeeStatusModules();
+    const adminOnlyElements = [
+        document.getElementById('admin-employee-module-link'),
+        document.getElementById('admin-unhired-module-link'),
+        document.getElementById('employee-module'),
+        document.getElementById('unhired-employees'),
+    ];
+    if (!canManageEmployeeCategories) {
+        adminOnlyElements.forEach(element => element.remove());
+    } else {
+        adminOnlyElements.forEach(element => {
+            element.hidden = false;
+        });
+    }
+    const employeeActionsHeading = document.getElementById('employee-actions-heading');
+    if (employeeActionsHeading) employeeActionsHeading.hidden = !canManageEmployeeCategories;
+    if (!isHrDashboardAccount()) return;
+
+    const applicationFormLink = document.getElementById('open-application-form');
+    if (applicationFormLink) applicationFormLink.hidden = getCurrentUser()?.employee_id !== 'ADMIN001';
+    const recruitmentQrCard = document.getElementById('hr-recruitment-qr-card');
+    if (recruitmentQrCard) recruitmentQrCard.hidden = getCurrentUser()?.employee_id !== 'ADMIN001';
 
     syncSidebarCollapseControl();
     syncThemePreferenceControl();
     loadAdminProfile();
+    loadNotifications();
     loadDashboardStats();
     loadUserAccounts();
     loadEmployees();
 loadApplicants();
         loadInterviews();
     loadAdminAnnouncements();
-    loadOnboardingEmployees();
     loadOnboarding();
 
     startAutoRefresh();
 };
 </script>
 
-<!-- AI Assistant Frontend Controller -->
-<script src="ai-assistant.js"></script>
-
 </body>
 </html>
-
-

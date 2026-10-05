@@ -11,12 +11,6 @@ header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Content-Type: application/json; charset=UTF-8");
 
-// Handle preflight OPTIONS requests
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
 // Load .env variables if file exists
 function loadEnv($path) {
     if (!file_exists($path)) return;
@@ -39,9 +33,19 @@ loadEnv(__DIR__ . '/../backend/.env');
 
 $allowedOrigin = trim(getenv('CORS_ALLOWED_ORIGIN') ?: '');
 $requestOrigin = trim($_SERVER['HTTP_ORIGIN'] ?? '');
-if ($allowedOrigin !== '' && $requestOrigin !== '' && hash_equals($allowedOrigin, $requestOrigin)) {
+$localOrigins = ['http://localhost:5000', 'http://127.0.0.1:5000'];
+if ($requestOrigin !== '' && $allowedOrigin !== '' && hash_equals($allowedOrigin, $requestOrigin)) {
     header('Access-Control-Allow-Origin: ' . $allowedOrigin);
     header('Vary: Origin');
+} elseif ($requestOrigin !== '' && in_array($requestOrigin, $localOrigins, true)) {
+    header('Access-Control-Allow-Origin: ' . $requestOrigin);
+    header('Vary: Origin');
+}
+
+// Handle preflight after applying the same origin policy as API requests.
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
 }
 
 $databaseUrl = getenv('DATABASE_URL') ?: '';
@@ -100,8 +104,75 @@ function getJwtSecret() {
     return JWT_SECRET;
 }
 
+function describeSystemActivity(string $route, string $method): string {
+    $route = trim($route, '/');
+    $method = strtoupper($method);
+
+    if ($route === 'auth/login' && $method === 'POST') return 'signed in';
+    if ($route === 'users/profile' && $method === 'PUT') return 'updated their account profile';
+    if ($route === 'users/password' && $method === 'PUT') return 'changed their password';
+    if ($route === 'users' && $method === 'POST') return 'created a user account';
+    if (preg_match('#^users/\d+$#', $route)) return $method === 'DELETE' ? 'deleted a user account' : 'updated a user account';
+    if ($route === 'employees' && $method === 'POST') return 'added an employee record';
+    if ($route === 'employees' && $method === 'GET') return '';
+    if (preg_match('#^employees/\d+/2x2-photo$#', $route)) return 'uploaded a Contract Signed picture';
+    if (preg_match('#^employees/\d+/status$#', $route)) return 'updated an employee category';
+    if (preg_match('#^employees/\d+$#', $route)) return $method === 'DELETE' ? 'deleted an employee record' : 'updated an employee record';
+    if ($route === 'applicants' && $method === 'POST') return 'submitted an application';
+    if (preg_match('#^applicants/\d+/decision$#', $route)) return 'updated an applicant decision';
+    if (preg_match('#^applicants/\d+/hire$#', $route)) return 'hired an applicant';
+    if (preg_match('#^applicants/\d+$#', $route) && $method === 'DELETE') return 'deleted an applicant record';
+    if ($route === 'interviews' && $method === 'POST') return 'scheduled an interview';
+    if (preg_match('#^interviews/\d+$#', $route)) return 'updated an interview';
+    if (preg_match('#^announcements/\d+/read$#', $route)) return 'read an announcement';
+    if ($route === 'announcements' && $method === 'POST') return 'published an announcement';
+    if (preg_match('#^announcements/\d+$#', $route)) return $method === 'DELETE' ? 'deleted an announcement' : 'updated an announcement';
+    if (preg_match('#^onboarding/employees/[^/]+/start$#', $route)) return 'started an employee onboarding checklist';
+    if ($route === 'onboarding' && $method === 'POST') return 'added an onboarding task';
+    if (preg_match('#^onboarding/\d+$#', $route)) return $method === 'DELETE' ? 'deleted an onboarding task' : 'updated an onboarding task';
+    if ($route === 'leave/request') return 'submitted a leave request';
+    if (preg_match('#^leave/\d+/status$#', $route)) return 'updated a leave request';
+    if ($route === 'attendance/clock-in') return 'clocked in';
+    if ($route === 'attendance/clock-out') return 'clocked out';
+    if ($route === 'auth/reset-password') return 'reset their password';
+
+    return '';
+}
+
+function recordSystemActivity($data, int $code): void {
+    global $pdo;
+    $route = $GLOBALS['route'] ?? '';
+    $method = strtoupper($GLOBALS['requestMethod'] ?? ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+    if ($code < 200 || $code >= 300 || !in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) return;
+    if ($route === 'ai/chat' || strpos($route, 'auth/forgot-password') === 0 || strpos($route, 'auth/resend-otp') === 0 || strpos($route, 'auth/verify-otp') === 0) return;
+
+    $activity = describeSystemActivity($route, $method);
+    if ($activity === '') return;
+
+    $user = $GLOBALS['hrms_activity_user'] ?? [];
+    if (!$user && is_array($data) && isset($data['user']) && is_array($data['user'])) {
+        $user = $data['user'];
+    }
+    $actorName = trim((string)($user['name'] ?? ''));
+    if ($actorName === '') {
+        $actorName = $route === 'applicants' ? 'Applicant' : 'Public user';
+    }
+    $actorId = isset($user['id']) ? (int)$user['id'] : null;
+    $actorRole = (string)($user['role'] ?? ($route === 'applicants' ? 'applicant' : ''));
+
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO system_activities (actor_id, actor_name, actor_role, activity) VALUES (?, ?, ?, ?)'
+        );
+        $stmt->execute([$actorId, $actorName, $actorRole, $activity]);
+    } catch (Throwable $error) {
+        error_log('HRMS activity recording failed for ' . $method . ' /' . $route . ': ' . $error->getMessage());
+    }
+}
+
 // JSON Output Helper Functions
 function respondJSON($data, $code = 200) {
+    recordSystemActivity($data, (int)$code);
     http_response_code($code);
     echo json_encode($data);
     exit();

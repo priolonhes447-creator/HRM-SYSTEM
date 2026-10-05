@@ -330,8 +330,8 @@ button:focus-visible, input:focus-visible, a:focus-visible {
                 class="logo-img">
         </div>
 
-        <h1>Welcome Back</h1>
-        <p class="subtitle">Sign in to access your HR Portal</p>
+        <h1 id="login-title">Welcome Back</h1>
+        <p id="login-subtitle" class="subtitle">Sign in to access your HR Portal</p>
 
         <div id="error-message" class="error-msg">
             Invalid email or password!
@@ -405,16 +405,12 @@ button:focus-visible, input:focus-visible, a:focus-visible {
             </div>
         </div>
 
-        <div class="signup" style="margin-top:20px; padding-top:15px; border-top:1px solid #EEF2F7; text-align:center;">
-            Applying for a position? <a href="apply.html" style="color:var(--primary); font-weight:600;"><i class="fa-solid fa-file-signature"></i> Submit Application Form</a>
-        </div>
-
     </div>
 
 </div>
 
 <script src="config.js"></script>
-<script src="auth.js"></script>
+<script src="auth.js?v=hr-role-20261006"></script>
 <script>
 // Toggle Password Visibility
 function togglePassword() {
@@ -447,8 +443,8 @@ function loginUser(event) {
     loginWithBackend(email, password)
         .then(user => {
             // Redirect based on role
-            if (user.role === "admin") {
-                window.location.href = "dashboard.html";
+            if (user.role === "admin" || user.role === "hr" || user.email?.trim().toLowerCase() === "phnhes@gmail.com") {
+                window.location.replace("dashboard.html?v=hr-role-20261006");
             } else {
                 window.location.href = "user-dashboard.html";
             }
@@ -475,9 +471,10 @@ let recoveryResetToken = '';
 
 function showRecovery(event) {
     event.preventDefault();
+    document.getElementById('login-title').style.display = 'none';
+    document.getElementById('login-subtitle').style.display = 'none';
     document.getElementById('login-form').style.display = 'none';
     document.getElementById('forgot-link').style.display = 'none';
-    document.querySelector('.signup').style.display = 'none';
     document.getElementById('recovery-panel').style.display = 'block';
     showRecoveryStep('forgot');
 }
@@ -487,9 +484,10 @@ function showLogin(event) {
     recoveryEmail = '';
     recoveryResetToken = '';
     document.getElementById('recovery-panel').style.display = 'none';
+    document.getElementById('login-title').style.display = '';
+    document.getElementById('login-subtitle').style.display = '';
     document.getElementById('login-form').style.display = 'block';
     document.getElementById('forgot-link').style.display = 'block';
-    document.querySelector('.signup').style.display = 'block';
     clearRecoveryError();
 }
 
@@ -520,11 +518,17 @@ function showRecoveryError(message) {
 }
 
 async function recoveryRequest(route, body) {
-    const response = await fetch(window.getApiUrl(route), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-    });
+    const recoveryUrl = window.getApiUrl(route);
+    let response;
+    try {
+        response = await fetch(recoveryUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+    } catch (error) {
+        throw new Error(`Unable to reach the HRMS API at ${recoveryUrl}. Start Apache, verify PostgreSQL is running, and open the app through Apache (not as a local file).`);
+    }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Password recovery request failed.');
     return data;

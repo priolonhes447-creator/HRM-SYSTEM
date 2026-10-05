@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/jwt.php';
+require_once __DIR__ . '/ness.php';
 
 try {
     $pdo = getDBConnection();
@@ -32,11 +33,50 @@ $route = trim($route, '/');
 // Decode JSON input body for POST/PUT requests
 $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
+function isRestrictedHrAccount(array $user): bool {
+    return ($user['role'] ?? null) === 'hr'
+        || strtolower(trim((string)($user['email'] ?? ''))) === 'phnhes@gmail.com';
+}
+
+function isHrDashboardUser(array $user): bool {
+    return in_array($user['role'] ?? null, ['admin', 'hr'], true);
+}
+
+function hiddenUnhiredApplicantFilter(array $user): string {
+    if (!isRestrictedHrAccount($user)) {
+        return '';
+    }
+    return "
+        AND NOT EXISTS (
+            SELECT 1
+            FROM employees hidden_employee
+            WHERE hidden_employee.status = 'Unhired'
+              AND (
+                  (
+                      NULLIF(BTRIM(COALESCE(a.email, '')), '') IS NOT NULL
+                      AND LOWER(BTRIM(hidden_employee.email)) = LOWER(BTRIM(a.email))
+                  )
+                  OR LOWER(REGEXP_REPLACE(BTRIM(COALESCE(hidden_employee.name, '')), '[[:space:]]+', ' ', 'g'))
+                     = LOWER(REGEXP_REPLACE(BTRIM(COALESCE(a.name, '')), '[[:space:]]+', ' ', 'g'))
+              )
+        )
+    ";
+}
+
 if ($route === 'health' && $requestMethod === 'GET') {
     respondJSON(['status' => 'ok', 'database' => 'postgresql']);
 }
 
 // Helper: Password verification & hashing using password_hash/bcrypt
+function generateTemporaryPassword($length = 12) {
+    $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+    $password = '';
+    for ($i = 0; $i < $length; $i++) {
+        $password .= $chars[random_int(0, strlen($chars) - 1)];
+    }
+    return $password;
+}
+
 function hashPassword($password) {
     return password_hash($password, PASSWORD_BCRYPT);
 }
@@ -102,13 +142,9 @@ function issuePasswordReset($pdo, $email, $enforceCooldown = false) {
 // Default Onboarding Checklist definition
 $DEFAULT_ONBOARDING_TASKS = [
     ['task' => 'Contract Signed', 'offset' => 0],
-    ['task' => 'Email & Account Created', 'offset' => 0],
-    ['task' => 'IT Assets Assigned (Laptop, Peripherals)', 'offset' => 1],
-    ['task' => 'Company ID / Access Badge Issued', 'offset' => 2],
     ['task' => 'Orientation & Company Policy Review', 'offset' => 3],
-    ['task' => 'Department Introductions & Buddy Assigned', 'offset' => 4],
     ['task' => 'Role-Specific Training', 'offset' => 7],
-    ['task' => '30-Day Check-in & Feedback Session', 'offset' => 30]
+    ['task' => 'Complete Required Initial Training', 'offset' => 30]
 ];
 
 // Helper: Start onboarding for an employee
@@ -156,7 +192,6 @@ try {
         if (!$user || !verifyPassword($password, $user['password'])) {
             respondError("Invalid email or password.", 401);
         }
-
         // Auto-upgrade legacy password hashes to bcrypt upon login
         if (substr($user['password'], 0, 4) !== '$2a$' && substr($user['password'], 0, 4) !== '$2y$' && substr($user['password'], 0, 4) !== '$2b$') {
             $upgradedHash = hashPassword($password);
@@ -175,6 +210,7 @@ try {
 
         $token = PHPJWT::encode($payload, getJwtSecret(), JWT_EXPIRES_IN);
 
+        $GLOBALS['hrms_activity_user'] = $payload;
         respondJSON([
             'token' => $token,
             'user' => $payload
@@ -299,45 +335,15 @@ try {
     // --------------------------------------------------------
     if ($route === 'ai/chat' && $requestMethod === 'POST') {
         $authUser = requireAuth();
-        $message = trim($input['message'] ?? '');
+        requireRole($authUser, 'admin');
+        $message = trim((string)($input['message'] ?? ''));
         if (!$message) respondError("Message is required.", 400);
-
-        // Fetch DB facts
-        $empCount = (int)$pdo->query("SELECT COUNT(*) FROM employees")->fetchColumn();
-        $appCount = (int)$pdo->query("SELECT COUNT(*) FROM applicants")->fetchColumn();
-        $deptStmt = $pdo->query("SELECT department, COUNT(*) as cnt FROM employees GROUP BY department");
-        $depts = [];
-        while ($r = $deptStmt->fetch()) {
-            $depts[$r['department'] ?? 'General'] = (int)$r['cnt'];
-        }
-
-        $msgLower = strtolower($message);
-        $reply = "";
-
-        if (strpos($msgLower, 'department') !== false || strpos($msgLower, 'dept') !== false) {
-            $deptLines = [];
-            foreach ($depts as $d => $c) {
-                $deptLines[] = "- **$d**: $c employee(s)";
-            }
-            $reply = "### 📊 Department Roster Summary\n\n" . (empty($deptLines) ? "No departments yet." : implode("\n", $deptLines)) . "\n\n**Total Employees:** $empCount";
-        } elseif (strpos($msgLower, 'employee') !== false || strpos($msgLower, 'staff') !== false) {
-            $empStmt = $pdo->query("SELECT name, department, role, status FROM employees LIMIT 10");
-            $empList = [];
-            while ($e = $empStmt->fetch()) {
-                $empList[] = "- **{$e['name']}** ({$e['department']}) — *{$e['role']}* [{$e['status']}]";
-            }
-            $reply = "### 👥 Employee Roster Overview\nTotal registered employees: **$empCount**\n\n" . implode("\n", $empList);
-        } elseif (strpos($msgLower, 'applicant') !== false || strpos($msgLower, 'hiring') !== false) {
-            $reply = "### 💼 Applicant & Hiring Pipeline\nTotal Applicants: **$appCount**\n\nCheck the **Applicants** tab to manage candidate statuses.";
-        } elseif (strpos($msgLower, 'draft') !== false || strpos($msgLower, 'announcement') !== false) {
-            $reply = "### 📢 Drafted Announcement\n\n**Title:** Important Company Update\n\n**Content:**\nDear Team,\n\nPlease be informed of upcoming company updates. Reach out to HR if you have any questions.\n\n*Best regards,*\n*HR Management Team*";
-        } else {
-            $reply = "### 🤖 Aura HR Assistant\nHello {$authUser['name']}! I am your HR AI Assistant.\n\n**Quick Stats:**\n- Total Employees: **$empCount**\n- Total Applicants: **$appCount**\n\nHow can I assist you with HR operations today?";
-        }
-
+        $messageLength = preg_match_all('/./us', $message);
+        if ($messageLength === false) respondError('Message must be valid UTF-8.', 400);
+        if ($messageLength > 2000) respondError('Message must be 2,000 characters or fewer.', 400);
         respondJSON([
-            'reply' => $reply,
-            'source' => 'php-hr-ai',
+            'reply' => getNessReply($message),
+            'source' => 'ness-system-guide',
             'userRole' => $authUser['role']
         ]);
     }
@@ -392,7 +398,7 @@ try {
     // --------------------------------------------------------
     if ($route === 'users' && $requestMethod === 'GET') {
         $authUser = requireAuth();
-        requireRole($authUser, 'admin');
+        requireExactRole($authUser, 'admin');
 
         // Enforce rule: purge orphan user accounts that are not in Employee Records Management
         $pdo->exec("DELETE FROM users WHERE id NOT IN (
@@ -401,13 +407,30 @@ try {
                              OR LOWER(e.email) = LOWER(u.email)
         )");
 
-        $stmt = $pdo->query("SELECT id, email, role, name, position, department, employee_id, created_at FROM users ORDER BY id DESC");
+        $sql = "
+            SELECT u.id, u.email, u.role, u.name, u.position, u.department, u.employee_id, u.created_at
+            FROM users u
+        ";
+        if (isRestrictedHrAccount($authUser)) {
+            $sql .= "
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM employees e
+                    WHERE e.status = 'Unhired'
+                      AND (
+                          (e.employee_id = u.employee_id AND NULLIF(u.employee_id, '') IS NOT NULL)
+                          OR LOWER(e.email) = LOWER(u.email)
+                      )
+                )
+            ";
+        }
+        $stmt = $pdo->query($sql . ' ORDER BY u.id DESC');
         respondJSON($stmt->fetchAll());
     }
 
     if ($route === 'users' && $requestMethod === 'POST') {
         $authUser = requireAuth();
-        requireRole($authUser, 'admin');
+        requireExactRole($authUser, 'admin');
 
         $email = trim(strtolower($input['email'] ?? ''));
         $password = $input['password'] ?? '';
@@ -418,6 +441,7 @@ try {
         $empId = trim($input['employee_id'] ?? '');
 
         if (!$email || !$password || !$name) respondError("email, password, and name are required.", 400);
+        if (!in_array($role, ['admin', 'hr', 'employee'], true)) respondError('Invalid user role.', 400);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) respondError("A valid email address is required.", 400);
         if (strlen($password) < 6) respondError("Password must be at least 6 characters.", 400);
 
@@ -435,10 +459,12 @@ try {
             if (!$empId) {
                 $stmtCount = $pdo->query("SELECT COUNT(*) as cnt FROM employees");
                 $empSeq = $stmtCount->fetch()['cnt'] + 1;
-                $empId = ($role === 'admin' ? 'ADMIN' : 'EMP') . str_pad($empSeq, 3, '0', STR_PAD_LEFT);
+                $rolePrefix = $role === 'admin' ? 'ADMIN' : ($role === 'hr' ? 'HR' : 'EMP');
+                $empId = $rolePrefix . str_pad($empSeq, 3, '0', STR_PAD_LEFT);
             }
+            $isHrRole = in_array($role, ['admin', 'hr'], true);
             $stmtIns = $pdo->prepare("INSERT INTO employees (employee_id, name, email, department, role, status) VALUES (?, ?, ?, ?, ?, 'Active')");
-            $stmtIns->execute([$empId, $name, $email, $department ?: ($role === 'admin' ? 'Human Resources' : 'General'), $position ?: ($role === 'admin' ? 'HR Manager' : 'Staff')]);
+            $stmtIns->execute([$empId, $name, $email, $department ?: ($isHrRole ? 'Human Resources' : 'General'), $position ?: ($isHrRole ? 'HR Manager' : 'Staff')]);
             $empDbId = $pdo->lastInsertId();
         } else {
             if (!$empId && !empty($emp['employee_id'])) {
@@ -463,7 +489,7 @@ try {
 
     if (preg_match('#^users/(\d+)$#', $route, $matches) && $requestMethod === 'PUT') {
         $authUser = requireAuth();
-        requireRole($authUser, 'admin');
+        requireExactRole($authUser, 'admin');
         $id = (int)$matches[1];
         $email = trim(strtolower($input['email'] ?? ''));
         $name = trim($input['name'] ?? '');
@@ -475,7 +501,7 @@ try {
         if (!$name || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             respondError('Name and a valid email address are required.', 400);
         }
-        if (!in_array($role, ['admin', 'employee'], true)) respondError('Invalid user role.', 400);
+        if (!in_array($role, ['admin', 'hr', 'employee'], true)) respondError('Invalid user role.', 400);
         if ($password !== '' && strlen($password) < 6) respondError('Password must be at least 6 characters.', 400);
 
         $existing = $pdo->prepare('SELECT * FROM users WHERE id = ?');
@@ -520,7 +546,7 @@ try {
 
     if (preg_match('#^users/(\d+)$#', $route, $matches) && $requestMethod === 'DELETE') {
         $authUser = requireAuth();
-        requireRole($authUser, 'admin');
+        requireExactRole($authUser, 'admin');
         $id = (int)$matches[1];
 
         if ($authUser['id'] === $id) respondError("You cannot delete your own account.", 400);
@@ -548,8 +574,75 @@ try {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
 
-        $stmt = $pdo->query("SELECT * FROM employees ORDER BY id DESC");
+        $sql = "SELECT * FROM employees";
+        if (isRestrictedHrAccount($authUser)) {
+            $sql .= " WHERE COALESCE(status, '') <> 'Unhired'";
+        }
+        $stmt = $pdo->query($sql . ' ORDER BY id DESC');
         respondJSON($stmt->fetchAll());
+    }
+
+    if (preg_match('#^employees/(\d+)/2x2-photo$#', $route, $matches) && ($requestMethod === 'POST' || $requestMethod === 'PUT')) {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+
+        $employeeId = (int)$matches[1];
+        if (empty($_FILES['file']) || !isset($_FILES['file']['tmp_name']) || $_FILES['file']['tmp_name'] === '') {
+            respondError('A picture file is required.', 400);
+        }
+        if ($_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+            respondError('The uploaded picture could not be processed. Please try another file.', 400);
+        }
+        if ($_FILES['file']['size'] > 5 * 1024 * 1024) {
+            respondError('The uploaded picture must be 5 MB or smaller.', 400);
+        }
+
+        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['file']['tmp_name']);
+        $allowedTypes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        if (!isset($allowedTypes[$mimeType])) {
+            respondError('Only JPG, PNG, and WebP image files are accepted.', 415);
+        }
+
+        $sql = "SELECT id, id_picture_path FROM employees WHERE id = ?";
+        if (isRestrictedHrAccount($authUser)) {
+            $sql .= " AND COALESCE(status, '') <> 'Unhired'";
+        }
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$employeeId]);
+        $employee = $stmt->fetch();
+        if (!$employee) {
+            respondError('Employee not found.', 404);
+        }
+
+        $photoDirectory = __DIR__ . '/applicant-id-photos';
+        if (!is_dir($photoDirectory) && !mkdir($photoDirectory, 0775, true) && !is_dir($photoDirectory)) {
+            respondError('Unable to save the uploaded picture.', 500);
+        }
+
+        $filename = 'employee-' . $employeeId . '-' . bin2hex(random_bytes(12)) . '.' . $allowedTypes[$mimeType];
+        $targetPath = $photoDirectory . '/' . $filename;
+        if (!move_uploaded_file($_FILES['file']['tmp_name'], $targetPath)) {
+            respondError('Unable to save the uploaded picture.', 500);
+        }
+        chmod($targetPath, 0600);
+
+        if (!empty($employee['id_picture_path'])) {
+            $existingPath = $photoDirectory . '/' . basename($employee['id_picture_path']);
+            if (is_file($existingPath)) {
+                @unlink($existingPath);
+            }
+        }
+
+        $update = $pdo->prepare("UPDATE employees SET id_picture_path = ? WHERE id = ?");
+        $update->execute([$filename, $employeeId]);
+
+        $pdo->prepare("UPDATE onboarding_tasks SET status = 'Completed' WHERE employee_id = ? AND LOWER(task) = LOWER('Contract Signed') AND status <> 'Completed'")->execute([$employeeId]);
+
+        respondJSON([
+            'message' => 'Contract Signed picture uploaded and saved to the employee record.',
+            'photo_path' => $filename,
+            'employee_id' => $employeeId
+        ]);
     }
 
     if ($route === 'employees' && $requestMethod === 'POST') {
@@ -588,6 +681,11 @@ try {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
         $id = (int)$matches[1];
+        if (isRestrictedHrAccount($authUser)) {
+            $employeeCheck = $pdo->prepare("SELECT 1 FROM employees WHERE id = ? AND status = 'Unhired'");
+            $employeeCheck->execute([$id]);
+            if ($employeeCheck->fetchColumn()) respondError('Employee not found.', 404);
+        }
 
         $stmt = $pdo->prepare("UPDATE employees SET employee_id=?, name=?, email=?, department=?, role=?, status=?, phone=?, address=?, date_of_birth=?, gender=?, emergency_contact=?, age=?, place_of_birth=?, tin=?, civil_status=?, last_name=?, first_name=?, middle_name=? WHERE id=?");
         $stmt->execute([
@@ -618,12 +716,69 @@ try {
         respondJSON(['message' => 'Employee updated successfully.', 'employee' => $stmt->fetch()]);
     }
 
+    if (preg_match('#^employees/(\d+)/status$#', $route, $matches) && $requestMethod === 'PUT') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+        if (isRestrictedHrAccount($authUser)) {
+            respondError('Access denied. This action is only available to the Admin account.', 403);
+        }
+        $status = trim((string)($input['status'] ?? ''));
+        if (!in_array($status, ['Complete', 'Unhired'], true)) {
+            respondError('Employee status must be Complete or Unhired.', 400);
+        }
+        $comment = trim((string)($input['comment'] ?? ''));
+        if ($status === 'Unhired' && $comment === '') respondError('A comment is required to move an employee to Unhired.', 400);
+        if (strlen($comment) > 2000) respondError('The comment must be 2,000 characters or fewer.', 400);
+
+        if ($status === 'Unhired') {
+            $stmt = $pdo->prepare("
+                UPDATE employees
+                SET status = ?, comments = ?
+                WHERE id = ?
+                RETURNING id, status, comments
+            ");
+            $stmt->execute([$status, $comment, (int)$matches[1]]);
+        } else {
+            $stmt = $pdo->prepare("
+                UPDATE employees
+                SET status = ?
+                WHERE id = ?
+                RETURNING id, status
+            ");
+            $stmt->execute([$status, (int)$matches[1]]);
+        }
+        $employee = $stmt->fetch();
+        if (!$employee) respondError('Employee not found.', 404);
+        respondJSON(['message' => 'Employee status updated successfully.', 'employee' => $employee]);
+    }
+
+    if (preg_match('#^employees/(\d+)/certificate-received$#', $route, $matches) && $requestMethod === 'PUT') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+        if (isRestrictedHrAccount($authUser)) {
+            respondError('Access denied. Certificate management is only available to the Admin account.', 403);
+        }
+        if (($input['received'] ?? null) !== true) {
+            respondError('received must be true.', 400);
+        }
+
+        $stmt = $pdo->prepare('UPDATE employees SET certificate_received_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING id, certificate_received_at');
+        $stmt->execute([(int)$matches[1]]);
+        $employee = $stmt->fetch();
+        if (!$employee) respondError('Employee not found.', 404);
+        respondJSON(['message' => 'Certificate receipt recorded.', 'employee' => $employee]);
+    }
+
     if (preg_match('#^employees/(\d+)$#', $route, $matches) && $requestMethod === 'DELETE') {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
         $id = (int)$matches[1];
 
-        $stmt = $pdo->prepare("SELECT employee_id, email FROM employees WHERE id = ?");
+        $sql = "SELECT employee_id, email, status FROM employees WHERE id = ?";
+        if (isRestrictedHrAccount($authUser)) {
+            $sql .= " AND COALESCE(status, '') <> 'Unhired'";
+        }
+        $stmt = $pdo->prepare($sql);
         $stmt->execute([$id]);
         $emp = $stmt->fetch();
 
@@ -631,10 +786,9 @@ try {
             $pdo->prepare("DELETE FROM onboarding_tasks WHERE employee_id = ?")->execute([$id]);
             $stmtUser = $pdo->prepare("SELECT id FROM users WHERE (employee_id = ? AND employee_id != '') OR LOWER(email) = LOWER(?)");
             $stmtUser->execute([$emp['employee_id'], $emp['email']]);
-            $users = $stmtUser->fetchAll();
-            foreach ($users as $u) {
-                $pdo->prepare("DELETE FROM announcement_reads WHERE user_id = ?")->execute([$u['id']]);
-                $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$u['id']]);
+            foreach ($stmtUser->fetchAll() as $user) {
+                $pdo->prepare("DELETE FROM announcement_reads WHERE user_id = ?")->execute([$user['id']]);
+                $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$user['id']]);
             }
             $stmtDelete = $pdo->prepare("DELETE FROM employees WHERE id = ?");
             $stmtDelete->execute([$id]);
@@ -642,7 +796,6 @@ try {
         } else {
             respondError("Employee not found.", 404);
         }
-
         respondJSON(['message' => 'Employee deleted successfully.']);
     }
 
@@ -653,7 +806,7 @@ try {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
 
-        $stmt = $pdo->query("SELECT * FROM applicants ORDER BY id DESC");
+        $stmt = $pdo->query("SELECT a.* FROM applicants a WHERE TRUE" . hiddenUnhiredApplicantFilter($authUser) . " ORDER BY a.id DESC");
         respondJSON($stmt->fetchAll());
     }
 
@@ -661,20 +814,29 @@ try {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
 
-        $stmt = $pdo->prepare('SELECT * FROM applicants WHERE id = ?');
+        $stmt = $pdo->prepare('SELECT a.* FROM applicants a WHERE a.id = ?' . hiddenUnhiredApplicantFilter($authUser));
         $stmt->execute([(int)$matches[1]]);
         $applicant = $stmt->fetch();
         if (!$applicant) respondError('Applicant not found.', 404);
         respondJSON($applicant);
     }
 
-    if (preg_match('#^applicants/(\d+)/(id-photo|2x2-photo|resume)$#', $route, $matches) && $requestMethod === 'GET') {
+    if (preg_match('#^applicants/(\d+)/(id-photo|2x2-photo|resume|sss-photo|pag-ibig-photo|nbi-photo|health-card-photo|psa-photo)$#', $route, $matches) && $requestMethod === 'GET') {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
 
-        $documentColumns = ['id-photo' => 'id_photo_path', '2x2-photo' => 'id_picture_path', 'resume' => 'resume_path'];
+        $documentColumns = [
+            'id-photo' => 'id_photo_path',
+            '2x2-photo' => 'id_picture_path',
+            'resume' => 'resume_path',
+            'sss-photo' => 'sss_photo_path',
+            'pag-ibig-photo' => 'pag_ibig_photo_path',
+            'nbi-photo' => 'nbi_photo_path',
+            'health-card-photo' => 'health_card_photo_path',
+            'psa-photo' => 'psa_photo_path'
+        ];
         $documentColumn = $documentColumns[$matches[2]];
-        $stmt = $pdo->prepare("SELECT {$documentColumn} FROM applicants WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT a.{$documentColumn} FROM applicants a WHERE a.id = ?" . hiddenUnhiredApplicantFilter($authUser));
         $stmt->execute([(int)$matches[1]]);
         $documentName = $stmt->fetchColumn();
         if (!$documentName) respondError('Applicant document not found.', 404);
@@ -694,16 +856,73 @@ try {
         exit;
     }
 
+    if (preg_match('#^employees/(\d+)/(id-photo|2x2-photo|resume|sss-photo|pag-ibig-photo|nbi-photo|health-card-photo|psa-photo|contract-signed-photo)$#', $route, $matches) && $requestMethod === 'GET') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+
+        $documentColumns = [
+            'id-photo' => 'id_photo_path',
+            '2x2-photo' => 'id_picture_path',
+            'resume' => 'resume_path',
+            'sss-photo' => 'sss_photo_path',
+            'pag-ibig-photo' => 'pag_ibig_photo_path',
+            'nbi-photo' => 'nbi_photo_path',
+            'health-card-photo' => 'health_card_photo_path',
+            'psa-photo' => 'psa_photo_path',
+            'contract-signed-photo' => 'id_picture_path'
+        ];
+        $documentColumn = $documentColumns[$matches[2]];
+        $sql = "SELECT {$documentColumn} FROM employees WHERE id = ?";
+        if (isRestrictedHrAccount($authUser)) {
+            $sql .= " AND COALESCE(status, '') <> 'Unhired'";
+        }
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([(int)$matches[1]]);
+        $documentName = $stmt->fetchColumn();
+        if (!$documentName) respondError('Employee document not found.', 404);
+
+        $documentPath = __DIR__ . '/applicant-id-photos/' . basename($documentName);
+        if (!is_file($documentPath)) respondError('Employee document not found.', 404);
+        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($documentPath);
+        $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        if (!isset($extensions[$mimeType])) respondError('Employee image type is not supported.', 415);
+
+        header_remove('Content-Type');
+        header('Content-Type: ' . $mimeType);
+        header('Content-Disposition: inline; filename="employee-' . $matches[2] . '-' . (int)$matches[1] . '.' . $extensions[$mimeType] . '"');
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        readfile($documentPath);
+        exit;
+    }
+
     if (preg_match('#^applicants/(\d+)/decision$#', $route, $matches) && $requestMethod === 'POST') {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
 
-        $decision = trim($input['decision'] ?? '');
+        $applicantCheck = $pdo->prepare('SELECT a.id FROM applicants a WHERE a.id = ?' . hiddenUnhiredApplicantFilter($authUser));
+        $applicantCheck->execute([(int)$matches[1]]);
+        if (!$applicantCheck->fetchColumn()) respondError('Applicant not found.', 404);
+
+        $decision = trim((string)($input['decision'] ?? ''));
+        $comments = trim((string)($input['comments'] ?? ''));
+
         if (!in_array($decision, ['Interviewing', 'Rejected'], true)) respondError('Invalid applicant decision.', 400);
-        $stmt = $pdo->prepare('UPDATE applicants SET status = ? WHERE id = ?');
-        $stmt->execute([$decision, (int)$matches[1]]);
+        if ($decision === 'Rejected' && $comments === '') respondError('A reason for disqualification is required.', 400);
+        if ($decision === 'Interviewing') {
+            $statusStmt = $pdo->prepare('SELECT a.status FROM applicants a WHERE a.id = ?' . hiddenUnhiredApplicantFilter($authUser));
+            $statusStmt->execute([(int)$matches[1]]);
+            $currentStatus = $statusStmt->fetchColumn();
+            if ($currentStatus === false) respondError('Applicant not found.', 404);
+            if ($currentStatus === 'Rejected') respondError('Applicants marked as not qualified cannot be moved to interviews.', 409);
+        }
+
+        $storedComments = $decision === 'Rejected' ? $comments : '';
+        $pdo->exec("ALTER TABLE applicants ADD COLUMN IF NOT EXISTS comments TEXT DEFAULT ''");
+        $stmt = $pdo->prepare('UPDATE applicants SET status = ?, comments = ? WHERE id = ?');
+        $stmt->execute([$decision, $storedComments, (int)$matches[1]]);
         if ($stmt->rowCount() !== 1) respondError('Applicant not found or decision was not saved.', 404);
-        respondJSON(['message' => 'Applicant decision saved.', 'status' => $decision]);
+        respondJSON(['message' => 'Applicant decision saved.', 'status' => $decision, 'comments' => $storedComments]);
     }
 
     if ($route === 'applicants' && $requestMethod === 'POST') {
@@ -720,20 +939,77 @@ try {
         $uploadedFiles = [
             'id_photo' => $_FILES['id_photo'] ?? null,
             'id_picture' => $_FILES['id_picture'] ?? null,
-            'resume' => $_FILES['resume'] ?? null
+            'resume' => $_FILES['resume'] ?? null,
+            'sss_picture' => $_FILES['sss_picture'] ?? null,
+            'pag_ibig_picture' => $_FILES['pag_ibig_picture'] ?? null,
+            'nbi_picture' => $_FILES['nbi_picture'] ?? null,
+            'health_card_picture' => $_FILES['health_card_picture'] ?? null,
+            'psa_picture' => $_FILES['psa_picture'] ?? null
         ];
-        if (!$uploadedFiles['id_photo'] && !$uploadedFiles['id_picture'] && !$uploadedFiles['resume']) {
+        foreach ($uploadedFiles as $field => $uploadedFile) {
+            if ($uploadedFile && $uploadedFile['error'] === UPLOAD_ERR_NO_FILE) {
+                $uploadedFiles[$field] = null;
+            }
+        }
+        if (count(array_filter($uploadedFiles)) === 0) {
             $authUser = requireAuth();
             requireRole($authUser, 'admin');
         }
 
+        foreach (['sss_number', 'pag_ibig_number', 'nbi_number'] as $numberField) {
+            if (strlen(trim((string)($input[$numberField] ?? ''))) > 50) {
+                respondError('Identification numbers must not exceed 50 characters.', 400);
+            }
+        }
+
+        $email = trim((string)($input['email'] ?? ''));
+        $phone = trim((string)($input['phone'] ?? ''));
+        $normalizedPhone = preg_replace('/\D/', '', $phone);
+        $emergencyContactPhone = trim((string)($input['emergency_contact_phone'] ?? ''));
+        $normalizedEmergencyContactPhone = preg_replace('/\D/', '', $emergencyContactPhone);
+        if (strlen($normalizedPhone) > 11 || strlen($normalizedEmergencyContactPhone) > 11) {
+            respondError('Applicant phone numbers must not exceed 11 digits.', 400);
+        }
+        if ($email !== '') {
+            $emailStmt = $pdo->prepare("
+                SELECT email
+                FROM (
+                    SELECT email FROM applicants
+                    UNION ALL
+                    SELECT email FROM employees
+                    UNION ALL
+                    SELECT email FROM users
+                ) AS existing_emails
+                WHERE LOWER(BTRIM(COALESCE(email, ''))) = LOWER(BTRIM(?))
+                LIMIT 1
+            ");
+            $emailStmt->execute([$email]);
+            if ($emailStmt->fetch()) {
+                respondError('This email is already in use. Please use a different email address.', 409);
+            }
+        }
+        $duplicateStmt = $pdo->prepare("
+            SELECT 1 FROM applicants
+            WHERE LOWER(REGEXP_REPLACE(BTRIM(COALESCE(name, '')), '[[:space:]]+', ' ', 'g'))
+                = LOWER(REGEXP_REPLACE(BTRIM(?), '[[:space:]]+', ' ', 'g'))
+            UNION ALL
+            SELECT 1 FROM employees
+            WHERE LOWER(REGEXP_REPLACE(BTRIM(COALESCE(name, '')), '[[:space:]]+', ' ', 'g'))
+                = LOWER(REGEXP_REPLACE(BTRIM(?), '[[:space:]]+', ' ', 'g'))
+            LIMIT 1
+        ");
+        $duplicateStmt->execute([$name, $name]);
+        if ($duplicateStmt->fetch()) {
+            respondError('A person with this full name already exists in Employee or Applicant records.', 409);
+        }
+
         $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
         $photoExtensions = [];
+        if (($uploadedFiles['id_photo'] && !$uploadedFiles['id_picture']) || (!$uploadedFiles['id_photo'] && $uploadedFiles['id_picture'])) {
+            respondError('Upload both the identification document and 2x2 picture.', 400);
+        }
         foreach ($uploadedFiles as $field => $uploadedFile) {
             if (!$uploadedFile) {
-                if ($field !== 'resume' && ($uploadedFiles['id_photo'] || $uploadedFiles['id_picture'])) {
-                    respondError('Upload both the identification document and 2x2 picture.', 400);
-                }
                 continue;
             }
             if ($uploadedFile['error'] !== UPLOAD_ERR_OK || $uploadedFile['size'] > 5 * 1024 * 1024) {
@@ -763,19 +1039,33 @@ try {
         }
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO applicants (name, surname, middle_name, first_name, position, department, email, phone, gender, address, date_of_birth, age, place_of_birth, tin, civil_status, emergency_contact, emergency_contact_name, emergency_contact_phone, id_photo_path, id_picture_path, resume_path, applied_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO applicants (name, surname, middle_name, first_name, position, department, email, phone, gender, address, date_of_birth, age, place_of_birth, tin, sss_number, pag_ibig_number, nbi_number, civil_status, emergency_contact, emergency_contact_name, emergency_contact_phone, id_photo_path, id_picture_path, resume_path, sss_photo_path, pag_ibig_photo_path, nbi_photo_path, health_card_photo_path, psa_photo_path, applied_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'New')");
             $stmt->execute([
                 $name, $surname, $middleName, $firstName, $position,
-                $input['department'] ?? 'General', $input['email'] ?? '', $input['phone'] ?? '',
+                $input['department'] ?? 'General', $input['email'] ?? '', $normalizedPhone,
                 $input['gender'] ?? '', $input['address'] ?? '', $input['date_of_birth'] ?? '',
                 (int)($input['age'] ?? 0), $input['place_of_birth'] ?? '', $input['tin'] ?? '',
+                trim((string)($input['sss_number'] ?? '')), trim((string)($input['pag_ibig_number'] ?? '')),
+                trim((string)($input['nbi_number'] ?? '')),
                 $input['civil_status'] ?? '', $input['emergency_contact'] ?? '',
-                $input['emergency_contact_name'] ?? '', $input['emergency_contact_phone'] ?? '',
+                $input['emergency_contact_name'] ?? '', $normalizedEmergencyContactPhone,
                 $savedPhotos['id_photo'] ?? null, $savedPhotos['id_picture'] ?? null, $savedPhotos['resume'] ?? null,
-                $appliedDate, $input['status'] ?? 'New'
+                $savedPhotos['sss_picture'] ?? null, $savedPhotos['pag_ibig_picture'] ?? null,
+                $savedPhotos['nbi_picture'] ?? null, $savedPhotos['health_card_picture'] ?? null,
+                $savedPhotos['psa_picture'] ?? null,
+                $appliedDate
             ]);
         } catch (Throwable $error) {
             foreach ($savedPhotos as $savedPhoto) @unlink($photoDirectory . '/' . $savedPhoto);
+            if ($error instanceof PDOException && $error->getCode() === '23505') {
+                if (strpos((string)($error->errorInfo[2] ?? ''), 'applicants_email_unique_idx') !== false) {
+                    respondError('This email is already in use. Please use a different email address.', 409);
+                }
+                if (strpos((string)($error->errorInfo[2] ?? ''), 'DUPLICATE_PERSON_NAME') !== false) {
+                    respondError('A person with this full name already exists in Employee or Applicant records.', 409);
+                }
+                respondError('An applicant with the same email address or full name and phone number already exists.', 409);
+            }
             throw $error;
         }
 
@@ -787,10 +1077,11 @@ try {
         requireRole($authUser, 'admin');
         $id = (int)$matches[1];
 
-        $stmt = $pdo->prepare("SELECT * FROM applicants WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT a.* FROM applicants a WHERE a.id = ?" . hiddenUnhiredApplicantFilter($authUser));
         $stmt->execute([$id]);
         $app = $stmt->fetch();
         if (!$app) respondError("Applicant not found.", 404);
+        if ($app['status'] === 'Rejected') respondError('Applicants marked as not qualified cannot be hired.', 409);
 
         // Generate unique EMP code
         $stmtCnt = $pdo->query("SELECT COUNT(*) as cnt FROM employees");
@@ -803,47 +1094,59 @@ try {
             $email = ($slug ?: 'employee') . '@company.com';
         }
 
-        // Insert employee with full details transferred
-        $stmtIns = $pdo->prepare("INSERT INTO employees (employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name) VALUES (?, ?, ?, ?, ?, 'Onboarding', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmtIns->execute([
-            $empCode, $app['name'], $email,
-            $app['department'] ?? 'General',
-            $app['position'] ?? '',
-            $app['phone'] ?? '',
-            $app['address'] ?? '',
-            $app['date_of_birth'] ?? '',
-            $app['gender'] ?? '',
-            $app['emergency_contact'] ?? '',
-            (int)($app['age'] ?? 0),
-            $app['place_of_birth'] ?? '',
-            $app['tin'] ?? '',
-            $app['civil_status'] ?? '',
-            $app['surname'] ?? $app['last_name'] ?? '',
-            $app['first_name'] ?? '',
-            $app['middle_name'] ?? ''
-        ]);
-        $empDbId = $pdo->lastInsertId();
+        $pdo->beginTransaction();
+        try {
+            $applicantUpdate = $pdo->prepare("UPDATE applicants SET status = 'Hired', email = ? WHERE id = ?");
+            $applicantUpdate->execute([$email, $id]);
 
-        // Start onboarding
-        startOnboardingChecklist($pdo, $empDbId, $DEFAULT_ONBOARDING_TASKS);
+            $stmtIns = $pdo->prepare("INSERT INTO employees (employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name, sss_number, pag_ibig_number, nbi_number, emergency_contact_name, emergency_contact_phone, id_photo_path, id_picture_path, resume_path, sss_photo_path, pag_ibig_photo_path, nbi_photo_path, health_card_photo_path, psa_photo_path, applied_date) VALUES (?, ?, ?, ?, ?, 'Onboarding', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmtIns->execute([
+                $empCode, $app['name'], $email,
+                $app['department'] ?? 'General',
+                $app['position'] ?? '',
+                $app['phone'] ?? '',
+                $app['address'] ?? '',
+                $app['date_of_birth'] ?? '',
+                $app['gender'] ?? '',
+                $app['emergency_contact'] ?? '',
+                (int)($app['age'] ?? 0),
+                $app['place_of_birth'] ?? '',
+                $app['tin'] ?? '',
+                $app['civil_status'] ?? '',
+                $app['surname'] ?? $app['last_name'] ?? '',
+                $app['first_name'] ?? '',
+                $app['middle_name'] ?? '',
+                $app['sss_number'] ?? '', $app['pag_ibig_number'] ?? '', $app['nbi_number'] ?? '',
+                $app['emergency_contact_name'] ?? '', $app['emergency_contact_phone'] ?? '',
+                $app['id_photo_path'] ?? '', $app['id_picture_path'] ?? '', $app['resume_path'] ?? '',
+                $app['sss_photo_path'] ?? '', $app['pag_ibig_photo_path'] ?? '', $app['nbi_photo_path'] ?? '',
+                $app['health_card_photo_path'] ?? '', $app['psa_photo_path'] ?? '', $app['applied_date'] ?? ''
+            ]);
+            $empDbId = $pdo->lastInsertId();
 
-        // Create portal login
-        $stmtUser = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $stmtUser->execute([$email]);
-        if (!$stmtUser->fetch()) {
-            $defaultHash = hashPassword('changeme123');
-            $stmtAcc = $pdo->prepare("INSERT INTO users (email, password, role, name, position, department, employee_id) VALUES (?, ?, 'employee', ?, ?, 'General', ?)");
-            $stmtAcc->execute([$email, $defaultHash, $app['name'], $app['position'], $empCode]);
+            startOnboardingChecklist($pdo, $empDbId, $DEFAULT_ONBOARDING_TASKS);
+
+            $stmtUser = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            $stmtUser->execute([$email]);
+            if (!$stmtUser->fetch()) {
+                $temporaryPassword = generateTemporaryPassword();
+                $defaultHash = hashPassword($temporaryPassword);
+                $stmtAcc = $pdo->prepare("INSERT INTO users (email, password, role, name, position, department, employee_id) VALUES (?, ?, 'employee', ?, ?, 'General', ?)");
+                $stmtAcc->execute([$email, $defaultHash, $app['name'], $app['position'], $empCode]);
+            }
+
+            $pdo->prepare("DELETE FROM applicants WHERE id = ?")->execute([$id]);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
         }
-
-        // Remove from applicants
-        $pdo->prepare("DELETE FROM applicants WHERE id = ?")->execute([$id]);
 
         respondJSON([
             'message' => "{$app['name']} hired successfully. Employee record, onboarding checklist, and portal login created.",
             'employee_id' => $empCode,
             'email' => $email,
-            'default_password' => 'changeme123'
+            'temporary_password' => $temporaryPassword ?? null
         ]);
     }
 
@@ -852,7 +1155,10 @@ try {
         requireRole($authUser, 'admin');
         $id = (int)$matches[1];
 
-        $pdo->prepare("DELETE FROM applicants WHERE id = ?")->execute([$id]);
+        $deleteSql = "DELETE FROM applicants AS a WHERE a.id = ?" . hiddenUnhiredApplicantFilter($authUser);
+        $deleteStmt = $pdo->prepare($deleteSql);
+        $deleteStmt->execute([$id]);
+        if ($deleteStmt->rowCount() !== 1) respondError('Applicant not found.', 404);
         respondJSON(['message' => 'Applicant deleted.']);
     }
 
@@ -865,6 +1171,8 @@ try {
 
         $stmt = $pdo->query("SELECT i.*, a.name AS applicant_name, a.position AS applicant_position
             FROM interviews i JOIN applicants a ON a.id = i.applicant_id
+            WHERE a.status NOT IN ('Rejected', 'Hired')
+            " . hiddenUnhiredApplicantFilter($authUser) . "
             ORDER BY i.scheduled_at DESC, i.id DESC");
         respondJSON($stmt->fetchAll());
     }
@@ -882,10 +1190,10 @@ try {
             respondError('Candidate, valid interview date and time, and interviewer are required.', 400);
         }
 
-        $stmtApplicant = $pdo->prepare('SELECT id, name, position, email FROM applicants WHERE id = ?');
+        $stmtApplicant = $pdo->prepare("SELECT a.id, a.name, a.position, a.email FROM applicants a WHERE a.id = ? AND a.status <> 'Rejected'" . hiddenUnhiredApplicantFilter($authUser));
         $stmtApplicant->execute([$applicantId]);
         $applicant = $stmtApplicant->fetch();
-        if (!$applicant) respondError('Applicant not found.', 404);
+        if (!$applicant) respondError('Applicant not found or is marked as not qualified.', 404);
 
         $location = trim($input['location'] ?? '');
         $notes = trim($input['notes'] ?? '');
@@ -927,12 +1235,177 @@ try {
         requireRole($authUser, 'admin');
 
         $status = trim($input['status'] ?? '');
-        $allowedStatuses = ['Scheduled', 'Completed', 'Cancelled', 'No Show'];
+        $allowedStatuses = ['Completed', 'Did Not Pass the Interview', 'No Show'];
         if (!in_array($status, $allowedStatuses, true)) respondError('Invalid interview status.', 400);
-        $stmt = $pdo->prepare('UPDATE interviews SET status = ? WHERE id = ?');
-        $stmt->execute([$status, (int)$matches[1]]);
-        if ($stmt->rowCount() !== 1) respondError('Interview not found or status was not updated.', 404);
-        respondJSON(['message' => 'Interview status updated.']);
+        $pdo->beginTransaction();
+        try {
+            $interviewStmt = $pdo->prepare("
+                SELECT i.applicant_id, a.*
+                FROM interviews i
+                JOIN applicants a ON a.id = i.applicant_id
+                WHERE i.id = ?
+                " . hiddenUnhiredApplicantFilter($authUser) . "
+                FOR UPDATE OF i, a
+            ");
+            $interviewStmt->execute([(int)$matches[1]]);
+            $applicant = $interviewStmt->fetch();
+            if (!$applicant) {
+                $pdo->rollBack();
+                respondError('Interview not found.', 404);
+            }
+
+            if ($status === 'Completed' && $applicant['status'] === 'Rejected') {
+                $pdo->rollBack();
+                respondError('Applicants marked as not qualified cannot be moved to onboarding.', 409);
+            }
+
+            $stmt = $pdo->prepare('UPDATE interviews SET status = ? WHERE id = ?');
+            $stmt->execute([$status, (int)$matches[1]]);
+
+            $onboardingResult = null;
+            if ($status === 'Completed' && $applicant['status'] !== 'Hired') {
+                $email = trim((string)($applicant['email'] ?? ''));
+                if ($email === '') {
+                    $slug = strtolower(preg_replace('/[^a-z0-9]+/', '', $applicant['name']));
+                    $baseEmail = ($slug ?: 'employee') . '@company.com';
+                    $email = $baseEmail;
+                    $suffix = 1;
+                    while (true) {
+                        $emailCheck = $pdo->prepare('SELECT 1 FROM employees WHERE LOWER(email) = LOWER(?) UNION ALL SELECT 1 FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1');
+                        $emailCheck->execute([$email, $email]);
+                        if (!$emailCheck->fetch()) break;
+                        $email = $suffix++ . '.' . $baseEmail;
+                    }
+                }
+
+                $markHired = $pdo->prepare("UPDATE applicants SET status = 'Hired', email = ? WHERE id = ?");
+                $markHired->execute([$email, (int)$applicant['applicant_id']]);
+
+                $employeeStmt = $pdo->prepare('SELECT id, employee_id FROM employees WHERE LOWER(email) = LOWER(?) LIMIT 1 FOR UPDATE');
+                $employeeStmt->execute([$email]);
+                $employee = $employeeStmt->fetch();
+
+                if (!$employee) {
+                    $nextCode = (int)$pdo->query("SELECT COALESCE(MAX(CAST(SUBSTRING(employee_id FROM 4) AS INTEGER)), 0) + 1 FROM employees WHERE employee_id ~ '^EMP[0-9]+$'")->fetchColumn();
+                    do {
+                        $employeeCode = 'EMP' . str_pad((string)$nextCode++, 3, '0', STR_PAD_LEFT);
+                        $codeCheck = $pdo->prepare('SELECT 1 FROM employees WHERE employee_id = ?');
+                        $codeCheck->execute([$employeeCode]);
+                    } while ($codeCheck->fetch());
+
+                    $employeeInsert = $pdo->prepare("INSERT INTO employees (employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name, sss_number, pag_ibig_number, nbi_number, emergency_contact_name, emergency_contact_phone, id_photo_path, id_picture_path, resume_path, sss_photo_path, pag_ibig_photo_path, nbi_photo_path, health_card_photo_path, psa_photo_path, applied_date)
+                        VALUES (?, ?, ?, ?, ?, 'Onboarding', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id");
+                    $employeeInsert->execute([
+                        $employeeCode, $applicant['name'], $email,
+                        $applicant['department'] ?? 'General',
+                        $applicant['position'] ?? '',
+                        $applicant['phone'] ?? '',
+                        $applicant['address'] ?? '',
+                        $applicant['date_of_birth'] ?? '',
+                        $applicant['gender'] ?? '',
+                        $applicant['emergency_contact'] ?? '',
+                        (int)($applicant['age'] ?? 0),
+                        $applicant['place_of_birth'] ?? '',
+                        $applicant['tin'] ?? '',
+                        $applicant['civil_status'] ?? '',
+                        $applicant['surname'] ?? '',
+                        $applicant['first_name'] ?? '',
+                        $applicant['middle_name'] ?? '',
+                        $applicant['sss_number'] ?? '', $applicant['pag_ibig_number'] ?? '', $applicant['nbi_number'] ?? '',
+                        $applicant['emergency_contact_name'] ?? '', $applicant['emergency_contact_phone'] ?? '',
+                        $applicant['id_photo_path'] ?? '', $applicant['id_picture_path'] ?? '', $applicant['resume_path'] ?? '',
+                        $applicant['sss_photo_path'] ?? '', $applicant['pag_ibig_photo_path'] ?? '', $applicant['nbi_photo_path'] ?? '',
+                        $applicant['health_card_photo_path'] ?? '', $applicant['psa_photo_path'] ?? '', $applicant['applied_date'] ?? ''
+                    ]);
+                    $employee = ['id' => $employeeInsert->fetchColumn(), 'employee_id' => $employeeCode];
+                } else {
+                    $employeeUpdate = $pdo->prepare("
+                        UPDATE employees SET
+                            status = 'Onboarding',
+                            name = COALESCE(NULLIF(?, ''), name),
+                            department = COALESCE(NULLIF(?, ''), department),
+                            role = COALESCE(NULLIF(?, ''), role),
+                            phone = COALESCE(NULLIF(?, ''), phone),
+                            address = COALESCE(NULLIF(?, ''), address),
+                            date_of_birth = COALESCE(NULLIF(?, ''), date_of_birth),
+                            gender = COALESCE(NULLIF(?, ''), gender),
+                            emergency_contact = COALESCE(NULLIF(?, ''), emergency_contact),
+                            age = CASE WHEN ? > 0 THEN ? ELSE age END,
+                            place_of_birth = COALESCE(NULLIF(?, ''), place_of_birth),
+                            tin = COALESCE(NULLIF(?, ''), tin),
+                            civil_status = COALESCE(NULLIF(?, ''), civil_status),
+                            last_name = COALESCE(NULLIF(?, ''), last_name),
+                            first_name = COALESCE(NULLIF(?, ''), first_name),
+                            middle_name = COALESCE(NULLIF(?, ''), middle_name),
+                            sss_number = COALESCE(NULLIF(?, ''), sss_number),
+                            pag_ibig_number = COALESCE(NULLIF(?, ''), pag_ibig_number),
+                            nbi_number = COALESCE(NULLIF(?, ''), nbi_number),
+                            emergency_contact_name = COALESCE(NULLIF(?, ''), emergency_contact_name),
+                            emergency_contact_phone = COALESCE(NULLIF(?, ''), emergency_contact_phone),
+                            id_photo_path = COALESCE(NULLIF(?, ''), id_photo_path),
+                            id_picture_path = COALESCE(NULLIF(?, ''), id_picture_path),
+                            resume_path = COALESCE(NULLIF(?, ''), resume_path),
+                            sss_photo_path = COALESCE(NULLIF(?, ''), sss_photo_path),
+                            pag_ibig_photo_path = COALESCE(NULLIF(?, ''), pag_ibig_photo_path),
+                            nbi_photo_path = COALESCE(NULLIF(?, ''), nbi_photo_path),
+                            health_card_photo_path = COALESCE(NULLIF(?, ''), health_card_photo_path),
+                            psa_photo_path = COALESCE(NULLIF(?, ''), psa_photo_path),
+                            applied_date = COALESCE(NULLIF(?, ''), applied_date)
+                        WHERE id = ?
+                    ");
+                    $employeeUpdate->execute([
+                        $applicant['name'] ?? '', $applicant['department'] ?? '', $applicant['position'] ?? '',
+                        $applicant['phone'] ?? '', $applicant['address'] ?? '', $applicant['date_of_birth'] ?? '',
+                        $applicant['gender'] ?? '', $applicant['emergency_contact'] ?? '',
+                        (int)($applicant['age'] ?? 0), (int)($applicant['age'] ?? 0),
+                        $applicant['place_of_birth'] ?? '', $applicant['tin'] ?? '', $applicant['civil_status'] ?? '',
+                        $applicant['surname'] ?? '', $applicant['first_name'] ?? '', $applicant['middle_name'] ?? '',
+                        $applicant['sss_number'] ?? '', $applicant['pag_ibig_number'] ?? '', $applicant['nbi_number'] ?? '',
+                        $applicant['emergency_contact_name'] ?? '', $applicant['emergency_contact_phone'] ?? '',
+                        $applicant['id_photo_path'] ?? '', $applicant['id_picture_path'] ?? '', $applicant['resume_path'] ?? '',
+                        $applicant['sss_photo_path'] ?? '', $applicant['pag_ibig_photo_path'] ?? '', $applicant['nbi_photo_path'] ?? '',
+                        $applicant['health_card_photo_path'] ?? '', $applicant['psa_photo_path'] ?? '', $applicant['applied_date'] ?? '',
+                        $employee['id']
+                    ]);
+                }
+
+                startOnboardingChecklist($pdo, $employee['id'], $DEFAULT_ONBOARDING_TASKS);
+
+                $userStmt = $pdo->prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1');
+                $userStmt->execute([$email]);
+                if (!$userStmt->fetch()) {
+                    $temporaryPassword = generateTemporaryPassword();
+                    $userInsert = $pdo->prepare("INSERT INTO users (email, password, role, name, position, department, employee_id)
+                        VALUES (?, ?, 'employee', ?, ?, ?, ?)");
+                    $userInsert->execute([
+                        $email,
+                        hashPassword($temporaryPassword),
+                        $applicant['name'],
+                        $applicant['position'] ?? '',
+                        $applicant['department'] ?? 'General',
+                        $employee['employee_id']
+                    ]);
+                }
+
+                $onboardingResult = [
+                    'employee_id' => $employee['employee_id'],
+                    'email' => $email,
+                    'temporary_password' => $temporaryPassword ?? null
+                ];
+            }
+
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+
+        respondJSON([
+            'message' => $onboardingResult
+                ? 'Interview completed. Applicant moved to onboarding.'
+                : 'Interview status updated.',
+            'onboarding' => $onboardingResult
+        ]);
     }
 
     // --------------------------------------------------------
@@ -1038,11 +1511,30 @@ try {
     if ($route === 'onboarding' && $requestMethod === 'GET') {
         $authUser = requireAuth();
 
-        if ($authUser['role'] === 'admin') {
+        if (isHrDashboardUser($authUser)) {
+            $visibleEmployeeFilter = isRestrictedHrAccount($authUser) ? " AND COALESCE(e.status, '') <> 'Unhired'" : '';
+            $pdo->exec("
+                UPDATE onboarding_tasks AS ot
+                SET status = 'Completed'
+                FROM employees AS e
+                WHERE ot.employee_id = e.id
+                  AND LOWER(ot.task) = LOWER('Contract Signed')
+                  AND ot.status <> 'Completed'
+                  AND NULLIF(e.id_picture_path, '') IS NOT NULL
+                  " . ($visibleEmployeeFilter !== '' ? "AND COALESCE(e.status, '') <> 'Unhired'" : '') . "
+            ");
             $stmt = $pdo->query("
-                SELECT ot.*, e.name AS emp_name, e.employee_id AS emp_code, e.department AS emp_department, e.role AS emp_role
+                SELECT ot.*, e.name AS emp_name, e.employee_id AS emp_code, e.department AS emp_department, e.role AS emp_role,
+                       e.id_picture_path AS contract_signed_photo
                 FROM onboarding_tasks ot
                 JOIN employees e ON ot.employee_id = e.id
+                WHERE ot.task NOT IN (
+                    'Email & Account Created',
+                    'IT Assets Assigned (Laptop, Peripherals)',
+                    'Company ID / Access Badge Issued',
+                    'Department Introductions & Buddy Assigned'
+                )
+                {$visibleEmployeeFilter}
                 ORDER BY ot.employee_id, ot.id ASC
             ");
             $rows = $stmt->fetchAll();
@@ -1071,7 +1563,6 @@ try {
 
             $activeCnt = count($summary);
             $totalTasks = count($rows);
-            $completedTasks = count(array_filter($rows, fn($t) => $t['status'] === 'Completed'));
             $avgProgress = $activeCnt ? (int)round(array_sum(array_column($summary, 'progress')) / $activeCnt) : 0;
 
             respondJSON([
@@ -1080,7 +1571,6 @@ try {
                 'stats' => [
                     'activeOnboardings' => $activeCnt,
                     'totalTasks' => $totalTasks,
-                    'completedTasks' => $completedTasks,
                     'averageProgress' => $avgProgress
                 ]
             ]);
@@ -1139,7 +1629,11 @@ try {
         requireRole($authUser, 'admin');
         $code = $matches[1];
 
-        $stmt = $pdo->prepare("SELECT * FROM employees WHERE employee_id = ?");
+        $employeeSql = "SELECT * FROM employees WHERE employee_id = ?";
+        if (isRestrictedHrAccount($authUser)) {
+            $employeeSql .= " AND COALESCE(status, '') <> 'Unhired'";
+        }
+        $stmt = $pdo->prepare($employeeSql);
         $stmt->execute([$code]);
         $emp = $stmt->fetch();
         if (!$emp) respondError("Employee not found.", 404);
@@ -1159,6 +1653,12 @@ try {
         $task = trim($input['task'] ?? '');
         if (!$empDbId || !$task) respondError("employee_id and task are required.", 400);
 
+        if (isRestrictedHrAccount($authUser)) {
+            $employeeCheck = $pdo->prepare("SELECT 1 FROM employees WHERE id = ? AND status = 'Unhired'");
+            $employeeCheck->execute([$empDbId]);
+            if ($employeeCheck->fetchColumn()) respondError('Employee not found.', 404);
+        }
+
         $stmt = $pdo->prepare("INSERT INTO onboarding_tasks (employee_id, task, status, due_date) VALUES (?, ?, ?, ?)");
         $stmt->execute([$empDbId, $task, $input['status'] ?? 'Pending', $input['due_date'] ?? '']);
         $taskId = $pdo->lastInsertId();
@@ -1174,7 +1674,16 @@ try {
         requireRole($authUser, 'admin');
         $id = (int)$matches[1];
 
-        $stmtCur = $pdo->prepare("SELECT * FROM onboarding_tasks WHERE id = ?");
+        $taskSql = "
+            SELECT ot.*, e.status AS employee_status
+            FROM onboarding_tasks ot
+            JOIN employees e ON e.id = ot.employee_id
+            WHERE ot.id = ?
+        ";
+        if (isRestrictedHrAccount($authUser)) {
+            $taskSql .= " AND COALESCE(e.status, '') <> 'Unhired'";
+        }
+        $stmtCur = $pdo->prepare($taskSql);
         $stmtCur->execute([$id]);
         $taskRow = $stmtCur->fetch();
         if (!$taskRow) respondError("Onboarding task not found.", 404);
@@ -1194,7 +1703,7 @@ try {
             $pdo->prepare("UPDATE employees SET status = 'Active' WHERE id = ? AND status = 'Onboarding'")->execute([$empId]);
         }
 
-        $stmtTask = $pdo->prepare("SELECT ot.*, e.name AS emp_name, e.employee_id AS emp_code FROM onboarding_tasks ot JOIN employees e ON ot.employee_id = e.id WHERE ot.id = ?");
+        $stmtTask = $pdo->prepare("SELECT ot.*, e.name AS emp_name, e.employee_id AS emp_code FROM onboarding_tasks ot JOIN employees e ON ot.employee_id = e.id WHERE ot.id = ?" . (isRestrictedHrAccount($authUser) ? " AND COALESCE(e.status, '') <> 'Unhired'" : ''));
         $stmtTask->execute([$id]);
         respondJSON(['message' => 'Onboarding task updated.', 'task' => $stmtTask->fetch()]);
     }
@@ -1204,6 +1713,11 @@ try {
         requireRole($authUser, 'admin');
         $id = (int)$matches[1];
 
+        if (isRestrictedHrAccount($authUser)) {
+            $taskCheck = $pdo->prepare("SELECT 1 FROM onboarding_tasks ot JOIN employees e ON e.id = ot.employee_id WHERE ot.id = ? AND e.status = 'Unhired'");
+            $taskCheck->execute([$id]);
+            if ($taskCheck->fetchColumn()) respondError('Onboarding task not found.', 404);
+        }
         $pdo->prepare("DELETE FROM onboarding_tasks WHERE id = ?")->execute([$id]);
         respondJSON(['message' => 'Onboarding task deleted.']);
     }
@@ -1214,27 +1728,87 @@ try {
     if ($route === 'dashboard/stats' && $requestMethod === 'GET') {
         $authUser = requireAuth();
 
-        $totalEmp = (int)$pdo->query("SELECT COUNT(*) as cnt FROM employees")->fetch()['cnt'];
-        $activeEmp = (int)$pdo->query("SELECT COUNT(*) as cnt FROM employees WHERE status = 'Active'")->fetch()['cnt'];
-        $totalApps = (int)$pdo->query("SELECT COUNT(*) as cnt FROM applicants")->fetch()['cnt'];
+        $visibleEmployeeFilter = isRestrictedHrAccount($authUser) ? " AND COALESCE(status, '') <> 'Unhired'" : '';
+        $visibleAliasedEmployeeFilter = isRestrictedHrAccount($authUser) ? " AND COALESCE(e.status, '') <> 'Unhired'" : '';
+        $totalEmp = (int)$pdo->query("SELECT COUNT(*) as cnt FROM employees WHERE TRUE{$visibleEmployeeFilter}")->fetch()['cnt'];
+        $employeeDirectoryCount = (int)$pdo->query("
+            SELECT COUNT(*) as cnt
+            FROM employees
+            WHERE COALESCE(role, '') <> 'admin'
+              AND COALESCE(email, '') <> 'phnhes@gmail.com'
+              AND COALESCE(employee_id, '') NOT IN ('ADMIN001', 'ADMIN002')
+              {$visibleEmployeeFilter}
+        ")->fetch()['cnt'];
+        $totalApps = (int)$pdo->query("SELECT COUNT(*) as cnt FROM applicants a WHERE a.status NOT IN ('Rejected', 'Hired', 'Interviewing')" . hiddenUnhiredApplicantFilter($authUser))->fetch()['cnt'];
 
         $thirtyDaysAgo = date('Y-m-d', strtotime('-30 days'));
-        $stmtNewHires = $pdo->prepare("SELECT COUNT(*) as cnt FROM employees WHERE date(created_at) >= ?");
+        $stmtNewHires = $pdo->prepare("SELECT COUNT(*) as cnt FROM employees WHERE date(created_at) >= ?{$visibleEmployeeFilter}");
         $stmtNewHires->execute([$thirtyDaysAgo]);
         $newHires = (int)$stmtNewHires->fetch()['cnt'];
 
-        $stmtDept = $pdo->query("SELECT department, COUNT(*) as count FROM employees GROUP BY department ORDER BY count DESC");
-        $depts = $stmtDept->fetchAll();
-
-        $retentionRate = $totalEmp > 0 ? (int)round(($activeEmp / $totalEmp) * 100) : 0;
-
+        $stmtEmployeePositions = $pdo->query("
+            SELECT CASE LOWER(TRIM(role))
+                       WHEN 'driver' THEN 'Driver'
+                       WHEN 'staff' THEN 'Staff'
+                       WHEN 'cashier' THEN 'Cashier'
+                       WHEN 'team leader' THEN 'Team Leader'
+                       ELSE TRIM(role)
+                   END AS position,
+                   COUNT(*) AS count
+            FROM employees
+            WHERE COALESCE(role, '') <> 'admin'
+              AND COALESCE(email, '') <> 'phnhes@gmail.com'
+              AND COALESCE(employee_id, '') NOT IN ('ADMIN001', 'ADMIN002')
+              AND NULLIF(TRIM(role), '') IS NOT NULL
+              {$visibleEmployeeFilter}
+            GROUP BY CASE LOWER(TRIM(role))
+                         WHEN 'driver' THEN 'Driver'
+                         WHEN 'staff' THEN 'Staff'
+                         WHEN 'cashier' THEN 'Cashier'
+                         WHEN 'team leader' THEN 'Team Leader'
+                         ELSE TRIM(role)
+                     END
+            ORDER BY count DESC, position ASC
+        ");
+        $employeePositions = $stmtEmployeePositions->fetchAll();
+        $completedOnboardings = (int)$pdo->query("
+            SELECT COUNT(*) AS cnt
+            FROM (
+                SELECT e.id
+                FROM employees e
+                JOIN onboarding_tasks ot ON ot.employee_id = e.id
+                WHERE ot.task NOT IN (
+                    'Email & Account Created',
+                    'IT Assets Assigned (Laptop, Peripherals)',
+                    'Company ID / Access Badge Issued',
+                    'Department Introductions & Buddy Assigned'
+                )
+                {$visibleAliasedEmployeeFilter}
+                GROUP BY e.id
+                HAVING COUNT(*) FILTER (WHERE ot.status = 'Completed') = COUNT(*)
+            ) completed
+        ")->fetch()['cnt'];
         respondJSON([
             'totalEmployees' => $totalEmp,
+            'employeeDirectoryCount' => $employeeDirectoryCount,
             'totalApplicants' => $totalApps,
             'newHires' => $newHires,
-            'departmentDistribution' => array_map(fn($d) => ['department' => $d['department'] ?: 'General', 'count' => (int)$d['count']], $depts),
-            'retentionRate' => $retentionRate
+            'employeePositionDistribution' => array_map(fn($position) => ['position' => $position['position'], 'count' => (int)$position['count']], $employeePositions),
+            'completedOnboardings' => $completedOnboardings
         ]);
+    }
+
+    if ($route === 'activities/recent' && $requestMethod === 'GET') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+
+        $stmt = $pdo->query("
+            SELECT id, actor_name, actor_role, activity, created_at
+            FROM system_activities
+            ORDER BY created_at DESC, id DESC
+            LIMIT 30
+        ");
+        respondJSON($stmt->fetchAll());
     }
 
     // --------------------------------------------------------
@@ -1295,7 +1869,18 @@ try {
     if ($route === 'leave/all' && $requestMethod === 'GET') {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
-        $stmt = $pdo->query("SELECT lr.*, u.name as employee_name, u.department, u.email FROM leave_requests lr JOIN users u ON lr.user_id = u.id ORDER BY lr.created_at DESC");
+        $hiddenEmployeeUserFilter = isRestrictedHrAccount($authUser) ? "
+            AND NOT EXISTS (
+                SELECT 1
+                FROM employees hidden_employee
+                WHERE hidden_employee.status = 'Unhired'
+                  AND (
+                      (NULLIF(u.employee_id, '') IS NOT NULL AND hidden_employee.employee_id = u.employee_id)
+                      OR LOWER(hidden_employee.email) = LOWER(u.email)
+                  )
+            )
+        " : '';
+        $stmt = $pdo->query("SELECT lr.*, u.name as employee_name, u.department, u.email FROM leave_requests lr JOIN users u ON lr.user_id = u.id WHERE TRUE {$hiddenEmployeeUserFilter} ORDER BY lr.created_at DESC");
         respondJSON($stmt->fetchAll());
     }
 
@@ -1391,15 +1976,19 @@ try {
 
     if ($route === 'documents/coe' && $requestMethod === 'GET') {
         $authUser = requireAuth();
+        $department = trim((string)($authUser['department'] ?? ''));
+        if ($department === '' || strcasecmp($department, 'General') === 0) {
+            $department = 'Human Resources';
+        }
         respondJSON([
             'certificateNo' => "COE-{$authUser['employee_id']}-" . substr(time(), -4),
             'issuedDate' => date('F d, Y'),
             'employeeName' => $authUser['name'],
             'employeeId' => $authUser['employee_id'] ?: 'N/A',
             'position' => $authUser['position'] ?: 'Staff',
-            'department' => $authUser['department'] ?: 'General',
+            'department' => $department,
             'status' => 'Active',
-            'companyName' => 'Human Resources Management System Inc.',
+            'companyName' => 'Toursphere',
             'signatory' => 'HR Director / Personnel Department'
         ]);
     }
@@ -1441,6 +2030,23 @@ try {
 
 } catch (Throwable $e) {
     error_log('HRMS API error: ' . $e->getMessage());
+    if ($e instanceof PDOException && $e->getCode() === '42703') {
+        respondError('The database schema is out of date. Back up the database, run database-migrations.sql, then try again. No data was saved.', 503);
+    }
+    if ($e instanceof PDOException && $e->getCode() === '42P01') {
+        respondError('Recent activities are not set up in this database. Back up the database, run the latest database-migrations.sql, then try again.', 503);
+    }
+    if ($e instanceof PDOException && $e->getCode() === '23505'
+        && strpos((string)($e->errorInfo[2] ?? ''), 'DUPLICATE_PERSON_NAME') !== false) {
+        respondError('A person with this full name already exists in Employee or Applicant records.', 409);
+    }
+    if ($e instanceof PDOException && $e->getCode() === '23514' && preg_match('#^employees/\d+/status$#', $route) === 1) {
+        $databaseMessage = (string)($e->errorInfo[2] ?? $e->getMessage());
+        if (preg_match('/violates check constraint "([^"]+)"/i', $databaseMessage, $constraintMatch) === 1
+            && $constraintMatch[1] === 'employees_status_check') {
+            respondError('The employee status configuration is out of date. Back up the database, run repair-employee-status.sql against the same database used by the API, then try again. No data was saved.', 503);
+        }
+    }
     $message = APP_ENV === 'development'
         ? 'Internal Server Error: ' . $e->getMessage()
         : 'Internal Server Error.';

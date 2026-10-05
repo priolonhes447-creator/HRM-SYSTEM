@@ -22,7 +22,13 @@ HRMS is a vanilla HTML/CSS/JavaScript frontend with a PHP 8 and PostgreSQL API. 
    ```
 
 3. For a brand-new database, review and run `supabase.sql.sql`. This script resets the HRMS tables and loads demo data, so never run it over production data.
-4. For an existing installation, run `database-migrations.sql` instead.
+4. For an existing installation, run `database-migrations.sql` instead. It consolidates existing applicant records with matching email addresses or matching full name and phone number, preserves linked interviews and missing profile details (including applicant identification numbers and document uploads), adds employee profile fields for hired applicants, backfills available applicant documents, enforces uniqueness for future submissions, and updates interview status values.
+   The migration also allows the Admin Employee Directory to categorize records as **Complete** or **Unhired**, stores employee comments used by the Unhired module, and adds certificate-receipt tracking for the Employee module.
+   It also prevents duplicate full names across employee and applicant records (case-insensitive and whitespace-normalized), while allowing the corresponding employee record for a hired applicant with the same email. Resolve any other existing duplicate names before applying the migration.
+   The migration supports a distinct `hr` user role and converts `phnhes@gmail.com` from Admin to HR. After applying it, that account must sign out and back in to receive an HR-role session. HR accounts remain excluded from Unhired employee records across employee, onboarding, account, document, and dashboard API views.
+   The dashboard includes Ness, a system-workflow help assistant for HR and Admin. It uses curated, server-side answers about this application only, returns an explicit outside-scope response for other questions, and does not query or send employee/applicant records to an AI provider.
+   For an existing installation that only needs this name-protection rule, back up the database and run `repair-duplicate-person-names.sql`. The repair does not remove or merge existing records.
+   If only the employee status constraint needs repair, back up the database and run `repair-employee-status.sql` against the same database used by the API. This focused repair preserves employee rows and reports the active database and resulting constraint.
 5. Install PHP dependencies:
 
    ```bash

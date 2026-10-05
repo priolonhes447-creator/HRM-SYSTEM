@@ -93,10 +93,20 @@ function requireAuth() {
     if (!$decoded) {
         respondError("Invalid or expired token.", 403);
     }
+    $GLOBALS['hrms_activity_user'] = $decoded;
     return $decoded;
 }
 
 function requireRole($user, $requiredRole) {
+    $role = $user['role'] ?? null;
+    $hasRequiredRole = $role === $requiredRole
+        || ($requiredRole === 'admin' && $role === 'hr');
+    if (!$hasRequiredRole) {
+        respondError("Access denied. {$requiredRole} role required.", 403);
+    }
+}
+
+function requireExactRole($user, $requiredRole) {
     if (!$user || !isset($user['role']) || $user['role'] !== $requiredRole) {
         respondError("Access denied. {$requiredRole} role required.", 403);
     }

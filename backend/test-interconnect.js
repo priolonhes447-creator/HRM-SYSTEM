@@ -48,9 +48,10 @@ async function main() {
   console.log('\n=== STEP 2: HIRE APPLICANT (creates employee + onboarding + login) ===');
   res = await req('POST', `/applicants/${applicantId}/hire`, null, adminToken);
   check('hire succeeds', res.status === 200 && res.data.employee_id, res);
-  check('hire returns portal credentials', res.data.email && res.data.default_password === 'changeme123', res.data);
+  check('hire returns portal credentials', res.data.email && !!res.data.temporary_password, res.data);
   const empCode = res.data.employee_id;
   const empEmail = res.data.email;
+  const tempPassword = res.data.temporary_password;
 
   // 3. Verify employee created with Onboarding status
   console.log('\n=== STEP 3: EMPLOYEE + ONBOARDING + USER CREATED ===');
@@ -71,8 +72,8 @@ async function main() {
 
   // 4. New hire can log in with default password
   console.log('\n=== STEP 4: NEW HIRE LOGIN ===');
-  res = await req('POST', '/auth/login', { email: empEmail, password: 'changeme123' });
-  check('new hire login with default password', res.status === 200 && res.data.token, res);
+  res = await req('POST', '/auth/login', { email: empEmail, password: tempPassword });
+  check('new hire login with temporary password', res.status === 200 && res.data.token, res);
   const empToken = res.data.token;
 
   // 5. Employee sees their own onboarding checklist

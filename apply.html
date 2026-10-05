@@ -306,7 +306,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
                 </div>
                 <div class="form-group">
                     <label>Phone Number <span class="required">*</span></label>
-                    <input type="tel" id="phone" name="phone" required autocapitalize="off" placeholder="+63 917 000 0000">
+                    <input type="tel" id="phone" name="phone" required autocapitalize="off" inputmode="numeric" maxlength="11" pattern="[0-9]{1,11}" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 11)" title="Enter no more than 11 digits." placeholder="0917 000 0000">
                 </div>
                 <div class="form-group">
                     <label>Date of Birth</label>
@@ -334,6 +334,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
                     <label>Tax Identification Number (TIN)</label>
                     <input type="text" id="tin" name="tin" autocapitalize="words" placeholder="e.g. 000-000-000-000">
                 </div>
+                <div class="form-group">
+                    <label for="sss_number">SSS Number</label>
+                    <input type="text" id="sss_number" name="sss_number" inputmode="numeric" maxlength="50" placeholder="Enter SSS number">
+                </div>
+                <div class="form-group">
+                    <label for="pag_ibig_number">Pag-IBIG Number</label>
+                    <input type="text" id="pag_ibig_number" name="pag_ibig_number" inputmode="numeric" maxlength="50" placeholder="Enter Pag-IBIG number">
+                </div>
+                <div class="form-group">
+                    <label for="nbi_number">NBI Number</label>
+                    <input type="text" id="nbi_number" name="nbi_number" maxlength="50" placeholder="Enter NBI number">
+                </div>
                 <div class="form-group full-width">
                     <label>Home Address</label>
                     <input type="text" id="address" name="address" autocapitalize="words" placeholder="House #, Street, Barangay, City, Province">
@@ -344,18 +356,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
                 </div>
                 <div class="form-group">
                     <label for="emergency_contact_phone">Emergency Contact Phone Number</label>
-                    <input type="tel" id="emergency_contact_phone" name="emergency_contact_phone" autocapitalize="off" placeholder="+63 917 000 0000">
+                    <input type="tel" id="emergency_contact_phone" name="emergency_contact_phone" autocapitalize="off" inputmode="numeric" maxlength="11" pattern="[0-9]{0,11}" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 11)" title="Enter no more than 11 digits." placeholder="0917 000 0000">
                 </div>
             </div>
 
-            <div class="section-title"><i class="fa-regular fa-id-card"></i> Identification</div>
+            <div class="section-title"><i class="fa-regular fa-id-card"></i> ID Photo</div>
             <div class="form-grid">
                 <div class="requirement-note full-width" role="status" aria-live="polite">
                     <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-                    <div><strong>Valid ID Requirement</strong><p id="validIdRequirement">Other applicants: Any Valid ID</p></div>
+                    <div><strong id="validIdRequirementLabel">Valid ID Requirement</strong><p id="validIdRequirement">Other applicants: Any Valid ID</p></div>
                 </div>
                 <div class="form-group full-width">
-                    <label for="id_photo">Identification Document <span class="required">*</span></label>
+                    <label for="id_photo">ID Photo <span class="required">*</span></label>
                     <input class="upload-control" type="file" id="id_photo" name="id_photo" accept="image/jpeg,image/png,image/webp" required>
                     <p class="field-hint">Upload a clear photo of your ID (JPG, PNG or WebP, up to 5 MB).</p>
                     <p class="upload-name" id="uploadName" aria-live="polite"></p>
@@ -367,10 +379,44 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
                     <p class="upload-name" id="pictureUploadName" aria-live="polite"></p>
                 </div>
                 <div class="form-group full-width">
-                    <label for="resume">Resume / ID Photo</label>
+                    <label for="resume">Resume</label>
                     <input class="upload-control" type="file" id="resume" name="resume" accept="image/jpeg,image/png,image/webp">
                     <p class="field-hint">Upload a clear photo of your ID (JPG, PNG or WebP, up to 5 MB).</p>
                     <p class="upload-name" id="resumeUploadName" aria-live="polite"></p>
+                </div>
+            </div>
+
+            <div class="section-title"><i class="fa-solid fa-file-circle-check"></i> Supporting Document Pictures</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="sss_picture">SSS Document Picture</label>
+                    <input class="upload-control" type="file" id="sss_picture" name="sss_picture" accept="image/jpeg,image/png,image/webp">
+                    <p class="field-hint">JPG, PNG or WebP, up to 5 MB.</p>
+                    <p class="upload-name" id="sssUploadName" aria-live="polite"></p>
+                </div>
+                <div class="form-group">
+                    <label for="pag_ibig_picture">Pag-IBIG Document Picture</label>
+                    <input class="upload-control" type="file" id="pag_ibig_picture" name="pag_ibig_picture" accept="image/jpeg,image/png,image/webp">
+                    <p class="field-hint">JPG, PNG or WebP, up to 5 MB.</p>
+                    <p class="upload-name" id="pagIbigUploadName" aria-live="polite"></p>
+                </div>
+                <div class="form-group">
+                    <label for="nbi_picture">NBI Document Picture</label>
+                    <input class="upload-control" type="file" id="nbi_picture" name="nbi_picture" accept="image/jpeg,image/png,image/webp">
+                    <p class="field-hint">JPG, PNG or WebP, up to 5 MB.</p>
+                    <p class="upload-name" id="nbiUploadName" aria-live="polite"></p>
+                </div>
+                <div class="form-group">
+                    <label for="health_card_picture">Health Card Picture</label>
+                    <input class="upload-control" type="file" id="health_card_picture" name="health_card_picture" accept="image/jpeg,image/png,image/webp">
+                    <p class="field-hint">JPG, PNG or WebP, up to 5 MB.</p>
+                    <p class="upload-name" id="healthCardUploadName" aria-live="polite"></p>
+                </div>
+                <div class="form-group full-width">
+                    <label for="psa_picture">PSA Picture</label>
+                    <input class="upload-control" type="file" id="psa_picture" name="psa_picture" accept="image/jpeg,image/png,image/webp">
+                    <p class="field-hint">JPG, PNG or WebP, up to 5 MB.</p>
+                    <p class="upload-name" id="psaUploadName" aria-live="polite"></p>
                 </div>
             </div>
 
@@ -406,19 +452,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
 <script>
 const positionField = document.getElementById('position');
 const validIdRequirement = document.getElementById('validIdRequirement');
+const validIdRequirementLabel = document.getElementById('validIdRequirementLabel');
 const uploadFields = [
     ['id_photo', 'uploadName'],
     ['id_picture', 'pictureUploadName'],
-    ['resume', 'resumeUploadName']
+    ['resume', 'resumeUploadName'],
+    ['sss_picture', 'sssUploadName'],
+    ['pag_ibig_picture', 'pagIbigUploadName'],
+    ['nbi_picture', 'nbiUploadName'],
+    ['health_card_picture', 'healthCardUploadName'],
+    ['psa_picture', 'psaUploadName']
 ];
 
 function updateValidIdRequirement() {
-    validIdRequirement.textContent = positionField.value === 'Driver'
-        ? 'Driver applicants: Driver’s License'
+    const isDriverApplicant = positionField.value === 'Driver';
+    validIdRequirementLabel.textContent = isDriverApplicant
+        ? 'Valid ID Requirement for Driver Applicant'
+        : 'Valid ID Requirement';
+    validIdRequirement.textContent = isDriverApplicant
+        ? 'We only accept a Professional Driver’s License, and the driver’s license must have Code B1.'
         : 'Other applicants: Any Valid ID';
 }
 
 positionField.addEventListener('change', updateValidIdRequirement);
+updateValidIdRequirement();
 uploadFields.forEach(([inputId, nameId]) => {
     document.getElementById(inputId).addEventListener('change', (event) => {
         document.getElementById(nameId).textContent = event.target.files[0] ? event.target.files[0].name : '';
@@ -487,16 +544,21 @@ async function submitApplication(e) {
         const apiUrl = (typeof window.getApiUrl === 'function')
             ? window.getApiUrl('/applicants')
             : `${baseUrl}/index.php?route=applicants`;
-        const res = await fetch(apiUrl, {
-            method: 'POST',
-            body: formData
-        });
+        let res;
+        try {
+            res = await fetch(apiUrl, {
+                method: 'POST',
+                body: formData
+            });
+        } catch (networkError) {
+            throw new Error(`Unable to reach the HRMS API at ${apiUrl}. Start Apache, verify PostgreSQL is running, and open the form through Apache (not as a local file).`);
+        }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Submission failed. PostgreSQL did not save the application.');
         document.getElementById('applicantForm').style.display = 'none';
         document.getElementById('successCard').style.display = 'block';
     } catch (err) {
-        alertBox.innerText = 'Unexpected error: ' + err.message;
+        alertBox.innerText = err.message;
         alertBox.classList.add('alert-danger');
         alertBox.style.display = 'block';
     } finally {

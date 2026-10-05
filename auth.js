@@ -24,15 +24,76 @@ var API_BASE = window.API_BASE || getApiBase();
 window.API_BASE = API_BASE;
 
 const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000;
+const SESSION_WARNING_MS = 60 * 1000;
+const HR_DASHBOARD_URL = 'dashboard.html?v=hr-role-20261006';
 let inactivityTimeoutId = null;
+let inactivityWarningTimeoutId = null;
 let inactivityListenersStarted = false;
 
 function startInactivityTimeout() {
   if (inactivityListenersStarted) return;
   inactivityListenersStarted = true;
 
+  const warningStyles = document.createElement('style');
+  warningStyles.textContent = `
+    #hrms-session-warning {
+      position: fixed;
+      z-index: 10000;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      width: min(480px, calc(100vw - 32px));
+      padding: 24px;
+      border: 1px solid #dbe4ec;
+      border-top: 4px solid #d99a20;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.24);
+      color: #1f2937;
+      font: 15px/1.55 "DM Sans", Arial, sans-serif;
+    }
+    #hrms-session-warning[hidden] { display: none; }
+    #hrms-session-warning h2 {
+      margin: 0;
+      color: #172b3a;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    #hrms-session-warning p {
+      margin: 0;
+      color: #465766;
+    }
+    @media (max-width: 480px) {
+      #hrms-session-warning { padding: 20px; }
+    }
+  `;
+  document.head.appendChild(warningStyles);
+
+  const warning = document.createElement('aside');
+  warning.id = 'hrms-session-warning';
+  warning.setAttribute('role', 'alert');
+  warning.setAttribute('aria-atomic', 'true');
+  warning.hidden = true;
+
+  const title = document.createElement('h2');
+  title.textContent = 'Session Expiring.';
+
+  const message = document.createElement('p');
+  message.textContent = "Hello, I’m Ness, your AI Assistant. I’m reminding you that your session is about to expire. Please click or interact with the screen to keep your session active. Thank you.";
+  warning.append(title, message);
+  document.body.appendChild(warning);
+
   const resetInactivityTimeout = () => {
     window.clearTimeout(inactivityTimeoutId);
+    window.clearTimeout(inactivityWarningTimeoutId);
+    warning.hidden = true;
+    inactivityWarningTimeoutId = window.setTimeout(() => {
+      warning.hidden = false;
+    }, INACTIVITY_TIMEOUT_MS - SESSION_WARNING_MS);
     inactivityTimeoutId = window.setTimeout(logout, INACTIVITY_TIMEOUT_MS);
   };
 
@@ -60,11 +121,17 @@ function clearAuth() {
 
 // LOGIN via the configured PostgreSQL-backed API.
 async function loginWithBackend(email, password) {
-  const res = await fetch(window.getApiUrl('/auth/login'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: email.trim(), password })
-  });
+  const loginUrl = window.getApiUrl('/auth/login');
+  let res;
+  try {
+    res = await fetch(loginUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password })
+    });
+  } catch (error) {
+    throw new Error(`Unable to reach the HRMS API at ${loginUrl}. Start Apache, verify PostgreSQL is running, and open the app through Apache (not as a local file).`);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Unable to connect to the HRMS database server.');
 
@@ -100,9 +167,11 @@ function protectPage(requiredRole) {
     return;
   }
 
-  if (requiredRole && user.role !== requiredRole) {
-    if (user.role === 'admin') {
-      window.location.href = 'dashboard.html';
+  const hasRequiredRole = user.role === requiredRole
+    || (requiredRole === 'admin' && user.role === 'hr');
+  if (requiredRole && !hasRequiredRole) {
+    if (user.role === 'admin' || user.role === 'hr') {
+      window.location.replace(HR_DASHBOARD_URL);
     } else {
       window.location.href = 'user-dashboard.html';
     }

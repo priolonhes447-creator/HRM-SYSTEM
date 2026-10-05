@@ -66,6 +66,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..')));
 
+function handleDuplicatePersonName(res, error) {
+  if (!error || !String(error.message).includes('DUPLICATE_PERSON_NAME')) return false;
+  res.status(409).json({ error: 'A person with this full name already exists in Employee or Applicant records.' });
+  return true;
+}
+
 // ==================== JWT AUTH MIDDLEWARE ====================
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -265,19 +271,27 @@ app.post('/api/employees', authenticateToken, requireRole('admin'), (req, res) =
   if (!employee_id || !name || !email) {
     return res.status(400).json({ error: 'employee_id, name, and email are required.' });
   }
-  const id = addEmployee({ employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name });
-  res.status(201).json({ id, message: 'Employee added successfully.' });
+  try {
+    const id = addEmployee({ employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name });
+    res.status(201).json({ id, message: 'Employee added successfully.' });
+  } catch (error) {
+    if (!handleDuplicatePersonName(res, error)) throw error;
+  }
 });
 
 app.put('/api/employees/:id', authenticateToken, requireRole('admin'), (req, res) => {
   const { employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name } = req.body;
-  const updated = updateEmployee(parseInt(req.params.id), {
-    employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name
-  });
-  if (!updated) {
-    return res.status(404).json({ error: 'Employee not found.' });
+  try {
+    const updated = updateEmployee(parseInt(req.params.id), {
+      employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name
+    });
+    if (!updated) {
+      return res.status(404).json({ error: 'Employee not found.' });
+    }
+    res.json({ message: 'Employee updated successfully.', employee: updated });
+  } catch (error) {
+    if (!handleDuplicatePersonName(res, error)) throw error;
   }
-  res.json({ message: 'Employee updated successfully.', employee: updated });
 });
 
 app.delete('/api/employees/:id', authenticateToken, requireRole('admin'), (req, res) => {
@@ -302,21 +316,29 @@ app.post('/api/applicants', (req, res) => {
     return res.status(400).json({ error: 'Surname, first name, and position are required.' });
   }
   const date = applied_date || new Date().toISOString().split('T')[0];
-  const id = addApplicant({ ...req.body, name: fullName, applied_date: date, status: 'New' });
-  res.status(201).json({ id, message: 'Your application has been submitted successfully! Our recruitment team will review your details.' });
+  try {
+    const id = addApplicant({ ...req.body, name: fullName, applied_date: date, status: 'New' });
+    res.status(201).json({ id, message: 'Your application has been submitted successfully! Our recruitment team will review your details.' });
+  } catch (error) {
+    if (!handleDuplicatePersonName(res, error)) throw error;
+  }
 });
 
 app.post('/api/applicants/:id/hire', authenticateToken, requireRole('admin'), (req, res) => {
-  const result = hireApplicant(parseInt(req.params.id));
-  if (!result) {
-    return res.status(404).json({ error: 'Applicant not found.' });
+  try {
+    const result = hireApplicant(parseInt(req.params.id));
+    if (!result) {
+      return res.status(404).json({ error: 'Applicant not found.' });
+    }
+    res.json({
+      message: `${result.name} hired successfully. Employee record, onboarding checklist, and portal login created.`,
+      employee_id: result.employee_id,
+      email: result.email,
+      ...(result.temporary_password ? { temporary_password: result.temporary_password } : {})
+    });
+  } catch (error) {
+    if (!handleDuplicatePersonName(res, error)) throw error;
   }
-  res.json({
-    message: `${result.name} hired successfully. Employee record, onboarding checklist, and portal login created.`,
-    employee_id: result.employee_id,
-    email: result.email,
-    default_password: 'changeme123'
-  });
 });
 
 app.delete('/api/applicants/:id', authenticateToken, requireRole('admin'), (req, res) => {
@@ -464,8 +486,8 @@ app.post('/api/onboarding', authenticateToken, requireRole('admin'), (req, res) 
 // Admin-only: update a task (edit task text / status / due date)
 app.put('/api/onboarding/:id', authenticateToken, requireRole('admin'), (req, res) => {
   const { task, status, due_date } = req.body;
-  if (status && !['Pending', 'In Progress', 'Completed'].includes(status)) {
-    return res.status(400).json({ error: 'status must be Pending, In Progress, or Completed.' });
+  if (status && !['Pending', 'Completed'].includes(status)) {
+    return res.status(400).json({ error: 'status must be Pending or Completed.' });
   }
   const updated = updateOnboardingTask(parseInt(req.params.id), { task, status, due_date });
   if (!updated) {

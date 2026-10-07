@@ -504,6 +504,9 @@ function loginUser(event) {
 
     loginWithBackend(email, password)
         .then(result => {
+            if (!result || typeof result !== 'object') {
+                throw new Error('The HRMS API returned an incomplete login response. Confirm that the latest frontend and PHP API files are deployed together.');
+            }
             if (result.requiresOtp) {
                 loginOtpChallengeId = result.challengeId;
                 document.getElementById('login-form').style.display = 'none';

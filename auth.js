@@ -133,9 +133,18 @@ async function loginWithBackend(email, password) {
     throw new Error(`Unable to reach the HRMS API at ${loginUrl}. Start Apache, verify PostgreSQL is running, and open the app through Apache (not as a local file).`);
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Unable to connect to the HRMS database server.');
+  if (!res.ok) {
+    throw new Error((data && typeof data.error === 'string' && data.error) || 'Unable to connect to the HRMS database server.');
+  }
 
-  if (data.requires_otp) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('The HRMS API returned an unexpected login response. Confirm that the latest frontend and PHP API files are deployed together.');
+  }
+
+  if (data.requires_otp === true) {
+    if (typeof data.challenge_id !== 'string' || !data.challenge_id || typeof data.email !== 'string' || !data.email) {
+      throw new Error('The HRMS API returned an incomplete email verification response. Confirm that the latest frontend and PHP API files are deployed together.');
+    }
     clearAuth();
     return {
       requiresOtp: true,
@@ -185,6 +194,17 @@ async function resendAdminLoginOtp(challengeId) {
 }
 
 function storeAuthenticatedSession(data) {
+  if (
+    !data ||
+    typeof data.token !== 'string' ||
+    !data.token ||
+    !data.user ||
+    typeof data.user !== 'object' ||
+    Array.isArray(data.user)
+  ) {
+    throw new Error('The HRMS API returned an incomplete login response. Confirm that the latest frontend and PHP API files are deployed together.');
+  }
+
   storeToken(data.token);
   sessionStorage.setItem('hrms_current_user', JSON.stringify(data.user));
 }

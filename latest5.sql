@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict MtvT7NavICG68QLTUMcajCAd9M6XL79jWvt6OG8vW46o9Hi1wpxOHwUKAhE86zJ
+\restrict eqVlmy9gRcGf29b1Nx9lmo8Lxehgqn3xPZbcMqpts5rfKP2931dqaojpZKMX8GN
 
 -- Dumped from database version 17.11
 -- Dumped by pg_dump version 17.11
 
--- Started on 2026-10-08 04:41:26
+-- Started on 2026-10-08 05:01:09
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1000,6 +1000,7 @@ COPY public.login_verifications (id, user_id, challenge_hash, otp_hash, attempts
 29	10	4da912cb40c981a2a61114e684aa0ad4f65fc537cf7d9b2692bbf5b95afe933b	$2y$10$GCWPaCpnNWMHBPS/Q5PgR.Tpvs3xYqmUWcwg5OEWbTTP6nNxOPHqi	0	2026-10-08 02:28:28.614935+08	2026-10-08 02:23:45.592443+08	2026-10-08 02:23:28.614935+08
 30	4	a56505d9a510cfbf89c06af09dfaaf96864ecf0b52eefdfc6a2fc4201e992a2e	$2y$10$uGQB9hsS0dF.J5BzB./W8O6sw.vX1rLPKUwQVHmfQdQCTF71EZgyq	0	2026-10-08 02:29:04.864107+08	2026-10-08 02:24:56.739411+08	2026-10-08 02:24:04.864107+08
 31	10	abf55cc654336415b9ee44848b6a09742ebb90967bd9cd9edf0e63a2add926a8	$2y$10$Xh4.F8XMVSSOpYH9fW5oR.RF8ggvRWfZc49HskYJkvmxbMK6cOuI2	1	2026-10-08 04:40:02.548842+08	2026-10-08 04:35:50.965063+08	2026-10-08 04:35:02.548842+08
+33	10	2a2e764d929adc14884cedb6309edee1d5671d5b8ed54ed5fbbe358e397534fc	$2y$10$PPZSguOHxJEXFa0W2nz4a.VqwQQtdQMPLi3y6bV3Dz23R4mYuusci	0	2026-10-08 04:50:51.950943+08	2026-10-08 04:46:13.729724+08	2026-10-08 04:45:51.950943+08
 32	4	6bf3008d4dea4b471e6058897e090e9f39c3b68537d73557e8316ac5b81f7b58	$2y$10$dwn56pAOgNTgX7ejVz.zJ.PvIoz8WyxEe6ckjzT66leQ5qB5QMk36	1	2026-10-08 04:41:37.48069+08	2026-10-08 04:37:35.730678+08	2026-10-08 04:36:37.48069+08
 \.
 
@@ -1067,6 +1068,7 @@ COPY public.system_activities (id, actor_id, actor_name, actor_role, activity, c
 158	29	Admin	admin	logged in	2026-10-08 02:23:45.705173+08
 161	29	Admin	admin	updated an employee category	2026-10-08 02:26:31.878657+08
 163	31	Admin	admin	logged in	2026-10-08 04:35:51.089571+08
+165	33	Admin	admin	logged in	2026-10-08 04:46:13.857311+08
 33	4	Human Resources	admin	updated an onboarding task	2026-10-05 20:05:47.145643+08
 34	4	Human Resources	admin	updated an onboarding task	2026-10-05 20:05:48.584243+08
 35	4	Human Resources	admin	updated an onboarding task	2026-10-05 20:05:50.217675+08
@@ -1305,7 +1307,7 @@ SELECT pg_catalog.setval('public.leave_requests_id_seq', 1, false);
 -- Name: login_verifications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.login_verifications_id_seq', 32, true);
+SELECT pg_catalog.setval('public.login_verifications_id_seq', 33, true);
 
 
 --
@@ -1341,7 +1343,7 @@ SELECT pg_catalog.setval('public.payslips_id_seq', 1, false);
 -- Name: system_activities_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.system_activities_id_seq', 164, true);
+SELECT pg_catalog.setval('public.system_activities_id_seq', 165, true);
 
 
 --
@@ -1687,11 +1689,11 @@ ALTER TABLE ONLY public.payslips
     ADD CONSTRAINT payslips_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
--- Completed on 2026-10-08 04:41:27
+-- Completed on 2026-10-08 05:01:10
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict MtvT7NavICG68QLTUMcajCAd9M6XL79jWvt6OG8vW46o9Hi1wpxOHwUKAhE86zJ
+\unrestrict eqVlmy9gRcGf29b1Nx9lmo8Lxehgqn3xPZbcMqpts5rfKP2931dqaojpZKMX8GN
 

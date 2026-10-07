@@ -84,7 +84,7 @@ function getDBConnection() {
     }
 
     $dsn = sprintf(
-        'pgsql:host=%s;port=%s;dbname=%s;sslmode=%s',
+        'pgsql:host=%s;port=%s;dbname=%s;sslmode=%s;connect_timeout=5',
         DB_HOST,
         DB_PORT,
         DB_NAME,
@@ -145,6 +145,7 @@ function recordSystemActivity($data, int $code): void {
     $method = strtoupper($GLOBALS['requestMethod'] ?? ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
     if ($code < 200 || $code >= 300 || !in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) return;
     if ($route === 'auth/login' && !empty($data['requires_otp'])) return;
+    if ($route === 'applicants' && !empty($data['already_submitted'])) return;
     if ($route === 'ai/chat' || strpos($route, 'auth/forgot-password') === 0 || strpos($route, 'auth/resend-otp') === 0 || strpos($route, 'auth/verify-otp') === 0) return;
 
     $activity = describeSystemActivity($route, $method);
@@ -162,6 +163,7 @@ function recordSystemActivity($data, int $code): void {
     $actorRole = (string)($user['role'] ?? ($route === 'applicants' ? 'applicant' : ''));
 
     try {
+        $pdo->exec("SET lock_timeout = '2s'");
         $stmt = $pdo->prepare(
             'INSERT INTO system_activities (actor_id, actor_name, actor_role, activity) VALUES (?, ?, ?, ?)'
         );
@@ -173,9 +175,18 @@ function recordSystemActivity($data, int $code): void {
 
 // JSON Output Helper Functions
 function respondJSON($data, $code = 200) {
-    recordSystemActivity($data, (int)$code);
+    $json = json_encode($data, JSON_THROW_ON_ERROR);
     http_response_code($code);
-    echo json_encode($data, JSON_THROW_ON_ERROR);
+
+    if (function_exists('fastcgi_finish_request')) {
+        echo $json;
+        fastcgi_finish_request();
+        recordSystemActivity($data, (int)$code);
+    } else {
+        recordSystemActivity($data, (int)$code);
+        echo $json;
+    }
+
     exit();
 }
 

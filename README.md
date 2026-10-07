@@ -73,6 +73,8 @@ Use a HostForge Developer Hosting plan with PHP 8.2 and PostgreSQL enabled.
 8. Enable the HostForge SSL certificate and force HTTPS in cPanel.
 9. Verify `https://your-domain.example/api/health`, then test login, application submission, password reset, and authenticated operations.
 
+The public application form accepts up to seven files, each no larger than 5 MB. Configure the HostForge PHP limits to allow the full multipart request (`upload_max_filesize` at least `5M`, `post_max_size` at least `40M`, and `max_file_uploads` at least `7`). Otherwise PHP may discard the submitted form before the API can validate it.
+
 For HostForge's container deployment screen, use the repository root and this start command:
 
 ```bash

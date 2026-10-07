@@ -615,6 +615,10 @@ async function submitApplication(e) {
     const form = document.getElementById('applicantForm');
     const btn = document.getElementById('submitBtn');
     const alertBox = document.getElementById('alertBox');
+
+    if (btn.disabled) {
+        return;
+    }
     
     alertBox.style.display = 'none';
     alertBox.className = 'alert-box';

@@ -33,6 +33,17 @@ $route = trim($route, '/');
 // Decode JSON input body for POST/PUT requests
 $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
+if (
+    $route === 'applicants' &&
+    $requestMethod === 'POST' &&
+    stripos($_SERVER['CONTENT_TYPE'] ?? '', 'multipart/form-data') === 0 &&
+    (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0 &&
+    empty($_POST) &&
+    empty($_FILES)
+) {
+    respondError('The application upload exceeds the server request-size limit. Reduce the total file size or contact HR.', 413);
+}
+
 function isRestrictedHrAccount(array $user): bool {
     return ($user['role'] ?? null) === 'hr'
         || strtolower(trim((string)($user['email'] ?? ''))) === 'phnhes@gmail.com';
@@ -308,6 +319,20 @@ function normalizeEmployeeDepartment($department): string {
     return $department === '' || strcasecmp($department, 'General') === 0
         ? 'HR'
         : $department;
+}
+
+function isDuplicateApplicantSubmission(PDO $pdo, string $email, string $name, string $phone): bool {
+    $stmt = $pdo->prepare("
+        SELECT 1
+        FROM applicants
+        WHERE LOWER(BTRIM(COALESCE(email, ''))) = LOWER(BTRIM(?))
+          AND LOWER(REGEXP_REPLACE(BTRIM(COALESCE(name, '')), '[[:space:]]+', ' ', 'g'))
+              = LOWER(REGEXP_REPLACE(BTRIM(?), '[[:space:]]+', ' ', 'g'))
+          AND REGEXP_REPLACE(COALESCE(phone, ''), '\\D', '', 'g') = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$email, $name, $phone]);
+    return (bool)$stmt->fetchColumn();
 }
 
 // ============================================================
@@ -1262,6 +1287,10 @@ try {
             respondError('Applicant phone numbers must not exceed 11 digits.', 400);
         }
         if ($email !== '') {
+            if (isDuplicateApplicantSubmission($pdo, $email, $name, $normalizedPhone)) {
+                respondJSON(['message' => 'Your application has already been received.', 'already_submitted' => true]);
+            }
+
             $emailStmt = $pdo->prepare("
                 SELECT email
                 FROM (
@@ -1364,6 +1393,9 @@ try {
         } catch (Throwable $error) {
             foreach ($savedPhotos as $savedPhoto) @unlink($photoDirectory . '/' . $savedPhoto);
             if ($error instanceof PDOException && $error->getCode() === '23505') {
+                if (isDuplicateApplicantSubmission($pdo, $email, $name, $normalizedPhone)) {
+                    respondJSON(['message' => 'Your application has already been received.', 'already_submitted' => true]);
+                }
                 if (strpos((string)($error->errorInfo[2] ?? ''), 'applicants_email_unique_idx') !== false) {
                     respondError('This email is already in use. Please use a different email address.', 409);
                 }

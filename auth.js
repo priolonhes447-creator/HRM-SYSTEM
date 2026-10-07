@@ -119,6 +119,24 @@ function clearAuth() {
   localStorage.removeItem('hrms_current_user');
 }
 
+async function readAuthApiResponse(res, fallbackMessage) {
+  let data;
+  try {
+    data = await res.json();
+  } catch (error) {
+    throw new Error(`The HRMS API returned invalid JSON (HTTP ${res.status}). Confirm that this URL reaches the PHP API.`);
+  }
+
+  if (!res.ok) {
+    throw new Error((data && typeof data.error === 'string' && data.error) || fallbackMessage);
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error(`The HRMS API returned an unexpected JSON response (HTTP ${res.status}).`);
+  }
+
+  return data;
+}
+
 // LOGIN via the configured PostgreSQL-backed API.
 async function loginWithBackend(email, password) {
   const loginUrl = window.getApiUrl('/auth/login');
@@ -132,14 +150,7 @@ async function loginWithBackend(email, password) {
   } catch (error) {
     throw new Error(`Unable to reach the HRMS API at ${loginUrl}. Start Apache, verify PostgreSQL is running, and open the app through Apache (not as a local file).`);
   }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error((data && typeof data.error === 'string' && data.error) || 'Unable to connect to the HRMS database server.');
-  }
-
-  if (!data || typeof data !== 'object' || Array.isArray(data)) {
-    throw new Error('The HRMS API returned an unexpected login response. Confirm that the latest frontend and PHP API files are deployed together.');
-  }
+  const data = await readAuthApiResponse(res, 'Unable to connect to the HRMS database server.');
 
   if (data.requires_otp === true) {
     if (typeof data.challenge_id !== 'string' || !data.challenge_id || typeof data.email !== 'string' || !data.email) {
@@ -169,8 +180,7 @@ async function verifyAdminLoginOtp(challengeId, otp) {
   } catch (error) {
     throw new Error(`Unable to reach the HRMS API at ${verificationUrl}. Start Apache, verify PostgreSQL is running, and open the app through Apache (not as a local file).`);
   }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Unable to verify the email code.');
+  const data = await readAuthApiResponse(res, 'Unable to verify the email code.');
 
   storeAuthenticatedSession(data);
   return data.user;
@@ -188,9 +198,7 @@ async function resendAdminLoginOtp(challengeId) {
   } catch (error) {
     throw new Error(`Unable to reach the HRMS API at ${resendUrl}. Start Apache, verify PostgreSQL is running, and open the app through Apache (not as a local file).`);
   }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Unable to resend the email code.');
-  return data;
+  return readAuthApiResponse(res, 'Unable to resend the email code.');
 }
 
 function storeAuthenticatedSession(data) {

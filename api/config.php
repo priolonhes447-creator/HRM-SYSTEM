@@ -175,7 +175,7 @@ function recordSystemActivity($data, int $code): void {
 function respondJSON($data, $code = 200) {
     recordSystemActivity($data, (int)$code);
     http_response_code($code);
-    echo json_encode($data);
+    echo json_encode($data, JSON_THROW_ON_ERROR);
     exit();
 }
 

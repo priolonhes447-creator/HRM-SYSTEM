@@ -63,6 +63,15 @@ function hiddenUnhiredApplicantFilter(array $user): string {
     ";
 }
 
+function ensureContractSignedPhotoColumn(PDO $pdo): void {
+    static $columnEnsured = false;
+    if ($columnEnsured) {
+        return;
+    }
+    $pdo->exec("ALTER TABLE employees ADD COLUMN IF NOT EXISTS contract_signed_photo_path VARCHAR(100) DEFAULT ''");
+    $columnEnsured = true;
+}
+
 if ($route === 'health' && $requestMethod === 'GET') {
     respondJSON(['status' => 'ok', 'database' => 'postgresql']);
 }
@@ -96,6 +105,97 @@ function findPasswordResetUser($pdo, $email) {
     $stmt = $pdo->prepare('SELECT id, email FROM users WHERE LOWER(email) = LOWER(?)');
     $stmt->execute([$email]);
     return $stmt->fetch();
+}
+
+function ensureLoginVerificationsTable(PDO $pdo): void {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS login_verifications (
+            id BIGSERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            challenge_hash CHAR(64) NOT NULL UNIQUE,
+            otp_hash VARCHAR(255) NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    ");
+    $pdo->exec('CREATE INDEX IF NOT EXISTS login_verifications_user_created_idx ON login_verifications (user_id, created_at DESC)');
+}
+
+function buildAuthenticatedUserPayload(array $user): array {
+    return [
+        'id' => (int)$user['id'],
+        'email' => $user['email'],
+        'role' => $user['role'],
+        'name' => $user['name'],
+        'position' => $user['position'] ?? '',
+        'department' => $user['department'] ?? '',
+        'employee_id' => $user['employee_id'] ?? ''
+    ];
+}
+
+function issueAuthenticatedSession(array $user): array {
+    $payload = buildAuthenticatedUserPayload($user);
+    return [
+        'token' => PHPJWT::encode($payload, getJwtSecret(), JWT_EXPIRES_IN),
+        'user' => $payload
+    ];
+}
+
+function requiresLoginEmailVerification(array $user): bool {
+    return in_array(strtolower((string)($user['role'] ?? '')), ['admin', 'hr'], true)
+        || strtolower(trim((string)($user['email'] ?? ''))) === 'phnhes@gmail.com';
+}
+
+function calculateApplicantAgeYears(?string $dateOfBirth): ?int {
+    if ($dateOfBirth === null || trim((string)$dateOfBirth) === '') {
+        return null;
+    }
+
+    $dob = DateTimeImmutable::createFromFormat('!Y-m-d', trim((string)$dateOfBirth));
+    $errors = DateTimeImmutable::getLastErrors();
+    if ($dob === false || ($errors && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+        return null;
+    }
+
+    $today = new DateTimeImmutable('today');
+    $age = (int)$today->format('Y') - (int)$dob->format('Y');
+    if ($today->format('md') < $dob->format('md')) {
+        $age--;
+    }
+
+    return $age >= 0 ? $age : null;
+}
+
+function validatePositionAgeRequirement(string $position, ?string $dateOfBirth): ?string {
+    $position = trim($position);
+    if ($position === '') {
+        return null;
+    }
+
+    $minimumAgeByPosition = [
+        'Staff' => 20,
+        'Cashier' => 20,
+        'Team Leader' => 20,
+        'Driver' => 25,
+    ];
+
+    if (!isset($minimumAgeByPosition[$position])) {
+        return null;
+    }
+
+    $age = calculateApplicantAgeYears($dateOfBirth);
+    if ($age === null) {
+        return "Applicants for {$position} must provide a valid date of birth.";
+    }
+
+    $minimumAge = $minimumAgeByPosition[$position];
+    if ($age < $minimumAge) {
+        return "Applicants for {$position} must be at least {$minimumAge} years old.";
+    }
+
+    return null;
 }
 
 function issuePasswordReset($pdo, $email, $enforceCooldown = false) {
@@ -141,10 +241,11 @@ function issuePasswordReset($pdo, $email, $enforceCooldown = false) {
 
 // Default Onboarding Checklist definition
 $DEFAULT_ONBOARDING_TASKS = [
-    ['task' => 'Contract Signed', 'offset' => 0],
-    ['task' => 'Orientation & Company Policy Review', 'offset' => 3],
-    ['task' => 'Role-Specific Training', 'offset' => 7],
-    ['task' => 'Complete Required Initial Training', 'offset' => 30]
+    ['task' => 'Contract Signed', 'offset' => 5],
+    ['task' => 'Health Card Picture', 'offset' => 20],
+    ['task' => 'Orientation & Company Policy Review', 'offset' => 10],
+    ['task' => 'Role-Specific Training', 'offset' => 10],
+    ['task' => 'Complete Required Initial Training', 'offset' => 15]
 ];
 
 // Helper: Start onboarding for an employee
@@ -167,6 +268,46 @@ function startOnboardingChecklist($pdo, $employeeDbId, $DEFAULT_ONBOARDING_TASKS
         $created[] = ['task' => $t['task'], 'status' => 'Pending', 'due_date' => $dueStr];
     }
     return ['created' => $created];
+}
+
+function generateUniqueEmployeeCode(PDO $pdo): string {
+    if (!$pdo->inTransaction()) {
+        throw new LogicException('Employee IDs can only be allocated inside a transaction.');
+    }
+
+    $pdo->query("SELECT pg_advisory_xact_lock(hashtext('hrms_employee_id_generation'))");
+    $nextNumber = (int)$pdo->query("
+        SELECT COALESCE(MAX(employee_number), 0) + 1
+        FROM (
+            SELECT CAST(SUBSTRING(employee_id FROM 4) AS INTEGER) AS employee_number
+            FROM employees
+            WHERE employee_id ~ '^EMP[0-9]+$'
+            UNION ALL
+            SELECT CAST(SUBSTRING(employee_id FROM 4) AS INTEGER) AS employee_number
+            FROM users
+            WHERE employee_id ~ '^EMP[0-9]+$'
+        ) AS existing_employee_codes
+    ")->fetchColumn();
+
+    $codeCheck = $pdo->prepare("
+        SELECT 1 FROM employees WHERE employee_id = ?
+        UNION ALL
+        SELECT 1 FROM users WHERE employee_id = ?
+        LIMIT 1
+    ");
+    do {
+        $employeeCode = 'EMP' . str_pad((string)$nextNumber++, 3, '0', STR_PAD_LEFT);
+        $codeCheck->execute([$employeeCode, $employeeCode]);
+    } while ($codeCheck->fetchColumn());
+
+    return $employeeCode;
+}
+
+function normalizeEmployeeDepartment($department): string {
+    $department = trim((string)($department ?? ''));
+    return $department === '' || strcasecmp($department, 'General') === 0
+        ? 'HR'
+        : $department;
 }
 
 // ============================================================
@@ -198,23 +339,156 @@ try {
             $pdo->prepare("UPDATE users SET password = ? WHERE id = ?")->execute([$upgradedHash, $user['id']]);
         }
 
-        $payload = [
-            'id' => (int)$user['id'],
-            'email' => $user['email'],
-            'role' => $user['role'],
-            'name' => $user['name'],
-            'position' => $user['position'] ?? '',
-            'department' => $user['department'] ?? '',
-            'employee_id' => $user['employee_id'] ?? ''
-        ];
+        if (requiresLoginEmailVerification($user)) {
+            ensureLoginVerificationsTable($pdo);
+            $recentChallenge = $pdo->prepare("
+                SELECT created_at FROM login_verifications
+                WHERE user_id = ? AND used_at IS NULL
+                ORDER BY created_at DESC LIMIT 1
+            ");
+            $recentChallenge->execute([(int)$user['id']]);
+            $latestChallenge = $recentChallenge->fetchColumn();
+            if ($latestChallenge && strtotime($latestChallenge) > time() - 60) {
+                respondError('A verification code was recently sent. Please wait before trying again or use Resend Code.', 429);
+            }
 
-        $token = PHPJWT::encode($payload, getJwtSecret(), JWT_EXPIRES_IN);
+            $otp = (string)random_int(100000, 999999);
+            $challengeId = bin2hex(random_bytes(32));
+            $challengeHash = hash('sha256', $challengeId);
+            $pdo->beginTransaction();
+            try {
+                $pdo->prepare('UPDATE login_verifications SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL')
+                    ->execute([(int)$user['id']]);
+                $insert = $pdo->prepare("
+                    INSERT INTO login_verifications (user_id, challenge_hash, otp_hash, expires_at)
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP + INTERVAL '5 minutes')
+                ");
+                $insert->execute([(int)$user['id'], $challengeHash, password_hash($otp, PASSWORD_DEFAULT)]);
+                $pdo->commit();
+            } catch (Throwable $error) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                throw $error;
+            }
 
-        $GLOBALS['hrms_activity_user'] = $payload;
-        respondJSON([
-            'token' => $token,
-            'user' => $payload
-        ]);
+            try {
+                require_once __DIR__ . '/mailer.php';
+                sendAdminLoginVerificationEmail($user['email'], $otp);
+            } catch (Throwable $error) {
+                error_log('HRMS login verification email failed: ' . $error->getMessage());
+                $pdo->prepare('UPDATE login_verifications SET used_at = CURRENT_TIMESTAMP WHERE challenge_hash = ?')
+                    ->execute([$challengeHash]);
+                respondError('Unable to send the login verification email. Please try again later.', 503);
+            }
+
+            respondJSON([
+                'requires_otp' => true,
+                'challenge_id' => $challengeId,
+                'email' => $user['email']
+            ]);
+        }
+
+        $session = issueAuthenticatedSession($user);
+
+        $GLOBALS['hrms_activity_user'] = $session['user'];
+        respondJSON($session);
+    }
+
+    if ($route === 'auth/resend-login-otp' && $requestMethod === 'POST') {
+        $challengeId = trim((string)($input['challenge_id'] ?? ''));
+        if (!preg_match('/^[a-f0-9]{64}$/', $challengeId)) {
+            respondError('Login verification session is invalid. Please sign in again.', 400);
+        }
+        ensureLoginVerificationsTable($pdo);
+        $challengeHash = hash('sha256', $challengeId);
+        $stmt = $pdo->prepare("
+            SELECT lv.id, lv.user_id, lv.created_at, u.email, u.role
+            FROM login_verifications lv
+            JOIN users u ON u.id = lv.user_id
+            WHERE lv.challenge_hash = ? AND lv.used_at IS NULL
+            ORDER BY lv.created_at DESC LIMIT 1
+        ");
+        $stmt->execute([$challengeHash]);
+        $verification = $stmt->fetch();
+        if (!$verification || !requiresLoginEmailVerification($verification)) {
+            respondError('Login verification session is invalid. Please sign in again.', 401);
+        }
+        if (strtotime($verification['created_at']) > time() - 60) {
+            respondError('Please wait before requesting another verification code.', 429);
+        }
+
+        $otp = (string)random_int(100000, 999999);
+        $update = $pdo->prepare("
+            UPDATE login_verifications
+            SET otp_hash = ?, attempts = 0, expires_at = CURRENT_TIMESTAMP + INTERVAL '5 minutes',
+                created_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND used_at IS NULL
+        ");
+        $update->execute([password_hash($otp, PASSWORD_DEFAULT), (int)$verification['id']]);
+        if ($update->rowCount() !== 1) respondError('Login verification session is no longer valid.', 409);
+        try {
+            require_once __DIR__ . '/mailer.php';
+            sendAdminLoginVerificationEmail($verification['email'], $otp);
+        } catch (Throwable $error) {
+            error_log('HRMS login verification resend failed: ' . $error->getMessage());
+            $pdo->prepare('UPDATE login_verifications SET used_at = CURRENT_TIMESTAMP WHERE id = ?')
+                ->execute([(int)$verification['id']]);
+            respondError('Unable to send the login verification email. Please sign in again later.', 503);
+        }
+        respondJSON(['message' => 'A new verification code has been sent.']);
+    }
+
+    if ($route === 'auth/verify-login-otp' && $requestMethod === 'POST') {
+        $challengeId = trim((string)($input['challenge_id'] ?? ''));
+        $otp = trim((string)($input['otp'] ?? ''));
+        if (!preg_match('/^[a-f0-9]{64}$/', $challengeId) || !preg_match('/^\d{6}$/', $otp)) {
+            respondError('Invalid verification code.', 400);
+        }
+        ensureLoginVerificationsTable($pdo);
+        $challengeHash = hash('sha256', $challengeId);
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("
+                SELECT lv.*, u.email, u.role, u.name, u.position, u.department, u.employee_id
+                FROM login_verifications lv
+                JOIN users u ON u.id = lv.user_id
+                WHERE lv.challenge_hash = ? AND lv.used_at IS NULL
+                FOR UPDATE OF lv
+            ");
+            $stmt->execute([$challengeHash]);
+            $verification = $stmt->fetch();
+            if (!$verification || !requiresLoginEmailVerification($verification)) {
+                $pdo->rollBack();
+                respondError('Login verification session is invalid. Please sign in again.', 401);
+            }
+            if (strtotime($verification['expires_at']) <= time()) {
+                $pdo->prepare('UPDATE login_verifications SET used_at = CURRENT_TIMESTAMP WHERE id = ?')
+                    ->execute([(int)$verification['id']]);
+                $pdo->commit();
+                respondError('Verification code has expired. Sign in again to request a new code.', 410);
+            }
+            if ((int)$verification['attempts'] >= 5) {
+                $pdo->prepare('UPDATE login_verifications SET used_at = CURRENT_TIMESTAMP WHERE id = ?')
+                    ->execute([(int)$verification['id']]);
+                $pdo->commit();
+                respondError('Too many invalid attempts. Sign in again to request a new code.', 429);
+            }
+            if (!password_verify($otp, $verification['otp_hash'])) {
+                $pdo->prepare('UPDATE login_verifications SET attempts = attempts + 1 WHERE id = ?')
+                    ->execute([(int)$verification['id']]);
+                $pdo->commit();
+                respondError('Invalid verification code.', 400);
+            }
+            $pdo->prepare('UPDATE login_verifications SET used_at = CURRENT_TIMESTAMP WHERE id = ?')
+                ->execute([(int)$verification['id']]);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+
+        $session = issueAuthenticatedSession($verification);
+        $GLOBALS['hrms_activity_user'] = $session['user'];
+        respondJSON($session);
     }
 
     if ($route === 'auth/forgot-password' && $requestMethod === 'POST') {
@@ -444,6 +718,9 @@ try {
         if (!in_array($role, ['admin', 'hr', 'employee'], true)) respondError('Invalid user role.', 400);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) respondError("A valid email address is required.", 400);
         if (strlen($password) < 6) respondError("Password must be at least 6 characters.", 400);
+        if ($role === 'employee') {
+            $department = normalizeEmployeeDepartment($department);
+        }
 
         // Check if existing user email
         $stmt = $pdo->prepare("SELECT id FROM users WHERE LOWER(email) = ?");
@@ -464,7 +741,7 @@ try {
             }
             $isHrRole = in_array($role, ['admin', 'hr'], true);
             $stmtIns = $pdo->prepare("INSERT INTO employees (employee_id, name, email, department, role, status) VALUES (?, ?, ?, ?, ?, 'Active')");
-            $stmtIns->execute([$empId, $name, $email, $department ?: ($isHrRole ? 'Human Resources' : 'General'), $position ?: ($isHrRole ? 'HR Manager' : 'Staff')]);
+            $stmtIns->execute([$empId, $name, $email, $department ?: ($isHrRole ? 'Human Resources' : 'HR'), $position ?: ($isHrRole ? 'HR Manager' : 'Staff')]);
             $empDbId = $pdo->lastInsertId();
         } else {
             if (!$empId && !empty($emp['employee_id'])) {
@@ -502,6 +779,9 @@ try {
             respondError('Name and a valid email address are required.', 400);
         }
         if (!in_array($role, ['admin', 'hr', 'employee'], true)) respondError('Invalid user role.', 400);
+        if ($role === 'employee') {
+            $department = normalizeEmployeeDepartment($department);
+        }
         if ($password !== '' && strlen($password) < 6) respondError('Password must be at least 6 characters.', 400);
 
         $existing = $pdo->prepare('SELECT * FROM users WHERE id = ?');
@@ -573,76 +853,42 @@ try {
     if ($route === 'employees' && $requestMethod === 'GET') {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
+        ensureContractSignedPhotoColumn($pdo);
 
-        $sql = "SELECT * FROM employees";
+        $sql = "
+            SELECT e.*,
+                   CASE WHEN (
+                       EXISTS (
+                           SELECT 1
+                           FROM onboarding_tasks ot
+                           WHERE ot.employee_id = e.id
+                             AND ot.task NOT IN (
+                                 'Email & Account Created',
+                                 'IT Assets Assigned (Laptop, Peripherals)',
+                                 'Company ID / Access Badge Issued',
+                                 'Department Introductions & Buddy Assigned'
+                             )
+                       )
+                       AND NOT EXISTS (
+                           SELECT 1
+                           FROM onboarding_tasks ot
+                           WHERE ot.employee_id = e.id
+                             AND ot.task NOT IN (
+                                 'Email & Account Created',
+                                 'IT Assets Assigned (Laptop, Peripherals)',
+                                 'Company ID / Access Badge Issued',
+                                 'Department Introductions & Buddy Assigned'
+                             )
+                             AND ot.status IS DISTINCT FROM 'Completed'
+                       )
+                   ) THEN 1 ELSE 0 END AS onboarding_completed
+            FROM employees e
+        ";
         if (isRestrictedHrAccount($authUser)) {
-            $sql .= " WHERE COALESCE(status, '') <> 'Unhired'";
+            $sql .= " WHERE COALESCE(e.status, '') <> 'Unhired'";
         }
-        $stmt = $pdo->query($sql . ' ORDER BY id DESC');
+        $stmt = $pdo->query($sql . ' ORDER BY e.id DESC');
         respondJSON($stmt->fetchAll());
-    }
-
-    if (preg_match('#^employees/(\d+)/2x2-photo$#', $route, $matches) && ($requestMethod === 'POST' || $requestMethod === 'PUT')) {
-        $authUser = requireAuth();
-        requireRole($authUser, 'admin');
-
-        $employeeId = (int)$matches[1];
-        if (empty($_FILES['file']) || !isset($_FILES['file']['tmp_name']) || $_FILES['file']['tmp_name'] === '') {
-            respondError('A picture file is required.', 400);
-        }
-        if ($_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-            respondError('The uploaded picture could not be processed. Please try another file.', 400);
-        }
-        if ($_FILES['file']['size'] > 5 * 1024 * 1024) {
-            respondError('The uploaded picture must be 5 MB or smaller.', 400);
-        }
-
-        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['file']['tmp_name']);
-        $allowedTypes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-        if (!isset($allowedTypes[$mimeType])) {
-            respondError('Only JPG, PNG, and WebP image files are accepted.', 415);
-        }
-
-        $sql = "SELECT id, id_picture_path FROM employees WHERE id = ?";
-        if (isRestrictedHrAccount($authUser)) {
-            $sql .= " AND COALESCE(status, '') <> 'Unhired'";
-        }
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$employeeId]);
-        $employee = $stmt->fetch();
-        if (!$employee) {
-            respondError('Employee not found.', 404);
-        }
-
-        $photoDirectory = __DIR__ . '/applicant-id-photos';
-        if (!is_dir($photoDirectory) && !mkdir($photoDirectory, 0775, true) && !is_dir($photoDirectory)) {
-            respondError('Unable to save the uploaded picture.', 500);
-        }
-
-        $filename = 'employee-' . $employeeId . '-' . bin2hex(random_bytes(12)) . '.' . $allowedTypes[$mimeType];
-        $targetPath = $photoDirectory . '/' . $filename;
-        if (!move_uploaded_file($_FILES['file']['tmp_name'], $targetPath)) {
-            respondError('Unable to save the uploaded picture.', 500);
-        }
-        chmod($targetPath, 0600);
-
-        if (!empty($employee['id_picture_path'])) {
-            $existingPath = $photoDirectory . '/' . basename($employee['id_picture_path']);
-            if (is_file($existingPath)) {
-                @unlink($existingPath);
-            }
-        }
-
-        $update = $pdo->prepare("UPDATE employees SET id_picture_path = ? WHERE id = ?");
-        $update->execute([$filename, $employeeId]);
-
-        $pdo->prepare("UPDATE onboarding_tasks SET status = 'Completed' WHERE employee_id = ? AND LOWER(task) = LOWER('Contract Signed') AND status <> 'Completed'")->execute([$employeeId]);
-
-        respondJSON([
-            'message' => 'Contract Signed picture uploaded and saved to the employee record.',
-            'photo_path' => $filename,
-            'employee_id' => $employeeId
-        ]);
     }
 
     if ($route === 'employees' && $requestMethod === 'POST') {
@@ -657,7 +903,7 @@ try {
         $stmt = $pdo->prepare("INSERT INTO employees (employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $empId, $name, $email,
-            $input['department'] ?? 'General',
+            normalizeEmployeeDepartment($input['department'] ?? ''),
             $input['role'] ?? '',
             $input['status'] ?? 'Active',
             $input['phone'] ?? '',
@@ -692,7 +938,7 @@ try {
             $input['employee_id'] ?? '',
             $input['name'] ?? '',
             $input['email'] ?? '',
-            $input['department'] ?? 'General',
+            normalizeEmployeeDepartment($input['department'] ?? ''),
             $input['role'] ?? '',
             $input['status'] ?? 'Active',
             $input['phone'] ?? '',
@@ -845,7 +1091,10 @@ try {
         if (!is_file($documentPath)) respondError('Applicant document not found.', 404);
         $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($documentPath);
         $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-        if (!isset($extensions[$mimeType])) respondError('Applicant image type is not supported.', 415);
+        if ($matches[2] === 'resume') {
+            $extensions['application/pdf'] = 'pdf';
+        }
+        if (!isset($extensions[$mimeType])) respondError('Applicant document type is not supported.', 415);
 
         header_remove('Content-Type');
         header('Content-Type: ' . $mimeType);
@@ -859,6 +1108,7 @@ try {
     if (preg_match('#^employees/(\d+)/(id-photo|2x2-photo|resume|sss-photo|pag-ibig-photo|nbi-photo|health-card-photo|psa-photo|contract-signed-photo)$#', $route, $matches) && $requestMethod === 'GET') {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
+        ensureContractSignedPhotoColumn($pdo);
 
         $documentColumns = [
             'id-photo' => 'id_photo_path',
@@ -869,7 +1119,7 @@ try {
             'nbi-photo' => 'nbi_photo_path',
             'health-card-photo' => 'health_card_photo_path',
             'psa-photo' => 'psa_photo_path',
-            'contract-signed-photo' => 'id_picture_path'
+            'contract-signed-photo' => 'contract_signed_photo_path'
         ];
         $documentColumn = $documentColumns[$matches[2]];
         $sql = "SELECT {$documentColumn} FROM employees WHERE id = ?";
@@ -885,7 +1135,10 @@ try {
         if (!is_file($documentPath)) respondError('Employee document not found.', 404);
         $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($documentPath);
         $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-        if (!isset($extensions[$mimeType])) respondError('Employee image type is not supported.', 415);
+        if ($matches[2] === 'resume') {
+            $extensions['application/pdf'] = 'pdf';
+        }
+        if (!isset($extensions[$mimeType])) respondError('Employee document type is not supported.', 415);
 
         header_remove('Content-Type');
         header('Content-Type: ' . $mimeType);
@@ -943,7 +1196,6 @@ try {
             'sss_picture' => $_FILES['sss_picture'] ?? null,
             'pag_ibig_picture' => $_FILES['pag_ibig_picture'] ?? null,
             'nbi_picture' => $_FILES['nbi_picture'] ?? null,
-            'health_card_picture' => $_FILES['health_card_picture'] ?? null,
             'psa_picture' => $_FILES['psa_picture'] ?? null
         ];
         foreach ($uploadedFiles as $field => $uploadedFile) {
@@ -951,9 +1203,48 @@ try {
                 $uploadedFiles[$field] = null;
             }
         }
-        if (count(array_filter($uploadedFiles)) === 0) {
+
+        $isAdminManualEntry = count(array_filter($uploadedFiles)) === 0;
+        if ($isAdminManualEntry) {
             $authUser = requireAuth();
             requireRole($authUser, 'admin');
+        } else {
+            $requiredFields = [
+                'first_name' => $firstName,
+                'surname' => $surname,
+                'email' => trim((string)($input['email'] ?? '')),
+                'phone' => trim((string)($input['phone'] ?? '')),
+                'position' => $position,
+                'date_of_birth' => trim((string)($input['date_of_birth'] ?? ''))
+            ];
+            foreach ($requiredFields as $field => $value) {
+                if ($value === '') {
+                    respondError('Complete all required information before submitting your application.', 400);
+                }
+            }
+            if (!filter_var($requiredFields['email'], FILTER_VALIDATE_EMAIL)) {
+                respondError('Enter a valid email address before submitting your application.', 400);
+            }
+            if (!preg_match('/^\d{1,11}$/', preg_replace('/\D/', '', $requiredFields['phone']))) {
+                respondError('Enter a valid phone number with no more than 11 digits.', 400);
+            }
+            if (!in_array($position, ['Driver', 'Staff', 'Cashier', 'Team Leader'], true)) {
+                respondError('Select a valid position before submitting your application.', 400);
+            }
+            foreach (['id_photo', 'id_picture', 'resume'] as $requiredDocument) {
+                if (!$uploadedFiles[$requiredDocument]) {
+                    respondError('Upload the required ID Photo, 2×2 Picture, and PDF resume before submitting your application.', 400);
+                }
+            }
+        }
+
+        $ageRequirementError = validatePositionAgeRequirement($position, (string)($input['date_of_birth'] ?? ''));
+        if ($ageRequirementError !== null) {
+            respondError($ageRequirementError, 400);
+        }
+
+        if (!$uploadedFiles['resume'] && !$isAdminManualEntry) {
+            respondError('A resume in PDF format is required.', 400);
         }
 
         foreach (['sss_number', 'pag_ibig_number', 'nbi_number'] as $numberField) {
@@ -1005,6 +1296,7 @@ try {
 
         $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
         $photoExtensions = [];
+        $resumeExtension = null;
         if (($uploadedFiles['id_photo'] && !$uploadedFiles['id_picture']) || (!$uploadedFiles['id_photo'] && $uploadedFiles['id_picture'])) {
             respondError('Upload both the identification document and 2x2 picture.', 400);
         }
@@ -1013,9 +1305,21 @@ try {
                 continue;
             }
             if ($uploadedFile['error'] !== UPLOAD_ERR_OK || $uploadedFile['size'] > 5 * 1024 * 1024) {
-                respondError('Each applicant image must be valid and no larger than 5 MB.', 400);
+                respondError($field === 'resume'
+                    ? 'The resume must be a valid PDF no larger than 5 MB.'
+                    : 'Each applicant image must be valid and no larger than 5 MB.', 400);
             }
             $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($uploadedFile['tmp_name']);
+            if ($field === 'resume') {
+                $resumeFile = fopen($uploadedFile['tmp_name'], 'rb');
+                $resumeHeader = $resumeFile ? fread($resumeFile, 1024) : false;
+                if ($resumeFile) fclose($resumeFile);
+                if ($mimeType !== 'application/pdf' || $resumeHeader === false || strpos($resumeHeader, '%PDF-') === false) {
+                    respondError('The resume must be a valid PDF file.', 415);
+                }
+                $resumeExtension = 'pdf';
+                continue;
+            }
             if (!isset($extensions[$mimeType])) respondError('Applicant images must be JPG, PNG, or WebP files.', 415);
             $photoExtensions[$field] = $extensions[$mimeType];
         }
@@ -1023,11 +1327,13 @@ try {
         $appliedDate = $input['applied_date'] ?? date('Y-m-d');
         $photoDirectory = __DIR__ . '/applicant-id-photos';
         $savedPhotos = [];
-        if ($photoExtensions) {
+        if ($photoExtensions || $resumeExtension !== null) {
             if (!is_dir($photoDirectory) && !mkdir($photoDirectory, 0700, true) && !is_dir($photoDirectory)) {
                 respondError('Unable to save applicant images.', 500);
             }
-            foreach ($photoExtensions as $field => $extension) {
+            $filesToSave = $photoExtensions;
+            $filesToSave['resume'] = $resumeExtension;
+            foreach ($filesToSave as $field => $extension) {
                 $filename = bin2hex(random_bytes(16)) . '.' . $extension;
                 if (!move_uploaded_file($uploadedFiles[$field]['tmp_name'], $photoDirectory . '/' . $filename)) {
                     foreach ($savedPhotos as $savedPhoto) @unlink($photoDirectory . '/' . $savedPhoto);
@@ -1051,7 +1357,7 @@ try {
                 $input['emergency_contact_name'] ?? '', $normalizedEmergencyContactPhone,
                 $savedPhotos['id_photo'] ?? null, $savedPhotos['id_picture'] ?? null, $savedPhotos['resume'] ?? null,
                 $savedPhotos['sss_picture'] ?? null, $savedPhotos['pag_ibig_picture'] ?? null,
-                $savedPhotos['nbi_picture'] ?? null, $savedPhotos['health_card_picture'] ?? null,
+                $savedPhotos['nbi_picture'] ?? null, null,
                 $savedPhotos['psa_picture'] ?? null,
                 $appliedDate
             ]);
@@ -1083,11 +1389,6 @@ try {
         if (!$app) respondError("Applicant not found.", 404);
         if ($app['status'] === 'Rejected') respondError('Applicants marked as not qualified cannot be hired.', 409);
 
-        // Generate unique EMP code
-        $stmtCnt = $pdo->query("SELECT COUNT(*) as cnt FROM employees");
-        $cnt = $stmtCnt->fetch()['cnt'] + 1;
-        $empCode = 'EMP' . str_pad($cnt, 3, '0', STR_PAD_LEFT);
-
         $email = trim($app['email'] ?? '');
         if (!$email) {
             $slug = strtolower(preg_replace('/[^a-z0-9]+/', '', $app['name']));
@@ -1096,13 +1397,14 @@ try {
 
         $pdo->beginTransaction();
         try {
+            $empCode = generateUniqueEmployeeCode($pdo);
             $applicantUpdate = $pdo->prepare("UPDATE applicants SET status = 'Hired', email = ? WHERE id = ?");
             $applicantUpdate->execute([$email, $id]);
 
             $stmtIns = $pdo->prepare("INSERT INTO employees (employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name, sss_number, pag_ibig_number, nbi_number, emergency_contact_name, emergency_contact_phone, id_photo_path, id_picture_path, resume_path, sss_photo_path, pag_ibig_photo_path, nbi_photo_path, health_card_photo_path, psa_photo_path, applied_date) VALUES (?, ?, ?, ?, ?, 'Onboarding', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmtIns->execute([
                 $empCode, $app['name'], $email,
-                $app['department'] ?? 'General',
+                normalizeEmployeeDepartment($app['department'] ?? ''),
                 $app['position'] ?? '',
                 $app['phone'] ?? '',
                 $app['address'] ?? '',
@@ -1131,8 +1433,8 @@ try {
             if (!$stmtUser->fetch()) {
                 $temporaryPassword = generateTemporaryPassword();
                 $defaultHash = hashPassword($temporaryPassword);
-                $stmtAcc = $pdo->prepare("INSERT INTO users (email, password, role, name, position, department, employee_id) VALUES (?, ?, 'employee', ?, ?, 'General', ?)");
-                $stmtAcc->execute([$email, $defaultHash, $app['name'], $app['position'], $empCode]);
+                $stmtAcc = $pdo->prepare("INSERT INTO users (email, password, role, name, position, department, employee_id) VALUES (?, ?, 'employee', ?, ?, ?, ?)");
+                $stmtAcc->execute([$email, $defaultHash, $app['name'], $app['position'], normalizeEmployeeDepartment($app['department'] ?? ''), $empCode]);
             }
 
             $pdo->prepare("DELETE FROM applicants WHERE id = ?")->execute([$id]);
@@ -1194,39 +1496,44 @@ try {
         $stmtApplicant->execute([$applicantId]);
         $applicant = $stmtApplicant->fetch();
         if (!$applicant) respondError('Applicant not found or is marked as not qualified.', 404);
+        $applicantEmail = trim((string)($applicant['email'] ?? ''));
+        if (!filter_var($applicantEmail, FILTER_VALIDATE_EMAIL)) {
+            respondError('The applicant does not have a valid email address on their application. Update the application email before scheduling.', 400);
+        }
 
         $location = trim($input['location'] ?? '');
         $notes = trim($input['notes'] ?? '');
         $scheduledAtValue = $scheduledAt->format('Y-m-d H:i:s');
-        $stmt = $pdo->prepare("INSERT INTO interviews (applicant_id, scheduled_at, interviewer, location, notes)
-            VALUES (?, ?, ?, ?, ?) RETURNING id");
-        $stmt->execute([$applicantId, $scheduledAtValue, $interviewer, $location, $notes]);
-        $interviewId = (int)$stmt->fetchColumn();
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("INSERT INTO interviews (applicant_id, scheduled_at, interviewer, location, notes)
+                VALUES (?, ?, ?, ?, ?) RETURNING id");
+            $stmt->execute([$applicantId, $scheduledAtValue, $interviewer, $location, $notes]);
+            $interviewId = (int)$stmt->fetchColumn();
 
-        $emailSent = false;
-        if (filter_var($applicant['email'] ?? '', FILTER_VALIDATE_EMAIL)) {
-            try {
-                require_once __DIR__ . '/mailer.php';
-                sendInterviewScheduledEmail($applicant['email'], [
-                    'applicant_name' => $applicant['name'],
-                    'position' => $applicant['position'] ?? '',
-                    'scheduled_at' => $scheduledAt->format('l, F j, Y \\a\\t g:i A'),
-                    'interviewer' => $interviewer,
-                    'location' => $location,
-                    'notes' => $notes
-                ]);
-                $emailSent = true;
-            } catch (Throwable $mailError) {
-                error_log('Interview email failed for interview ' . $interviewId . ': ' . $mailError->getMessage());
+            require_once __DIR__ . '/mailer.php';
+            sendInterviewScheduledEmail($applicantEmail, [
+                'applicant_name' => $applicant['name'],
+                'position' => $applicant['position'] ?? '',
+                'interview_date' => $scheduledAt->format('l, F j, Y'),
+                'interview_time' => $scheduledAt->format('g:i A'),
+                'interviewer' => $interviewer,
+                'location' => $location,
+                'notes' => $notes
+            ]);
+            $pdo->commit();
+        } catch (Throwable $mailError) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
+            error_log('Interview scheduling or email delivery failed: ' . $mailError->getMessage());
+            respondError('The interview could not be scheduled because its notification email was not sent. Check the mail settings and try again.', 503);
         }
 
         respondJSON([
             'id' => $interviewId,
-            'email_sent' => $emailSent,
-            'message' => $emailSent
-                ? 'Interview scheduled and details emailed to the applicant.'
-                : 'Interview scheduled, but the notification email could not be sent.'
+            'email_sent' => true,
+            'message' => 'Interview scheduled and all details emailed to the applicant.'
         ], 201);
     }
 
@@ -1286,18 +1593,13 @@ try {
                 $employee = $employeeStmt->fetch();
 
                 if (!$employee) {
-                    $nextCode = (int)$pdo->query("SELECT COALESCE(MAX(CAST(SUBSTRING(employee_id FROM 4) AS INTEGER)), 0) + 1 FROM employees WHERE employee_id ~ '^EMP[0-9]+$'")->fetchColumn();
-                    do {
-                        $employeeCode = 'EMP' . str_pad((string)$nextCode++, 3, '0', STR_PAD_LEFT);
-                        $codeCheck = $pdo->prepare('SELECT 1 FROM employees WHERE employee_id = ?');
-                        $codeCheck->execute([$employeeCode]);
-                    } while ($codeCheck->fetch());
+                    $employeeCode = generateUniqueEmployeeCode($pdo);
 
                     $employeeInsert = $pdo->prepare("INSERT INTO employees (employee_id, name, email, department, role, status, phone, address, date_of_birth, gender, emergency_contact, age, place_of_birth, tin, civil_status, last_name, first_name, middle_name, sss_number, pag_ibig_number, nbi_number, emergency_contact_name, emergency_contact_phone, id_photo_path, id_picture_path, resume_path, sss_photo_path, pag_ibig_photo_path, nbi_photo_path, health_card_photo_path, psa_photo_path, applied_date)
                         VALUES (?, ?, ?, ?, ?, 'Onboarding', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id");
                     $employeeInsert->execute([
                         $employeeCode, $applicant['name'], $email,
-                        $applicant['department'] ?? 'General',
+                        normalizeEmployeeDepartment($applicant['department'] ?? ''),
                         $applicant['position'] ?? '',
                         $applicant['phone'] ?? '',
                         $applicant['address'] ?? '',
@@ -1382,7 +1684,7 @@ try {
                         hashPassword($temporaryPassword),
                         $applicant['name'],
                         $applicant['position'] ?? '',
-                        $applicant['department'] ?? 'General',
+                        normalizeEmployeeDepartment($applicant['department'] ?? ''),
                         $employee['employee_id']
                     ]);
                 }
@@ -1510,9 +1812,26 @@ try {
     // --------------------------------------------------------
     if ($route === 'onboarding' && $requestMethod === 'GET') {
         $authUser = requireAuth();
+        ensureContractSignedPhotoColumn($pdo);
 
         if (isHrDashboardUser($authUser)) {
             $visibleEmployeeFilter = isRestrictedHrAccount($authUser) ? " AND COALESCE(e.status, '') <> 'Unhired'" : '';
+            $pdo->exec("
+                INSERT INTO onboarding_tasks (employee_id, task, status, due_date)
+                SELECT e.id, 'Health Card Picture', 'Pending', CURRENT_DATE
+                FROM employees e
+                WHERE e.status = 'Onboarding'
+                  AND EXISTS (
+                      SELECT 1 FROM onboarding_tasks existing_task
+                      WHERE existing_task.employee_id = e.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM onboarding_tasks health_card_task
+                      WHERE health_card_task.employee_id = e.id
+                        AND LOWER(BTRIM(health_card_task.task)) = LOWER('Health Card Picture')
+                  )
+                  " . ($visibleEmployeeFilter !== '' ? "AND COALESCE(e.status, '') <> 'Unhired'" : '') . "
+            ");
             $pdo->exec("
                 UPDATE onboarding_tasks AS ot
                 SET status = 'Completed'
@@ -1520,12 +1839,22 @@ try {
                 WHERE ot.employee_id = e.id
                   AND LOWER(ot.task) = LOWER('Contract Signed')
                   AND ot.status <> 'Completed'
-                  AND NULLIF(e.id_picture_path, '') IS NOT NULL
+                  AND NULLIF(e.contract_signed_photo_path, '') IS NOT NULL
+                  " . ($visibleEmployeeFilter !== '' ? "AND COALESCE(e.status, '') <> 'Unhired'" : '') . "
+            ");
+            $pdo->exec("
+                UPDATE onboarding_tasks AS ot
+                SET status = 'Completed'
+                FROM employees AS e
+                WHERE ot.employee_id = e.id
+                  AND LOWER(BTRIM(ot.task)) = LOWER('Health Card Picture')
+                  AND ot.status <> 'Completed'
+                  AND NULLIF(e.health_card_photo_path, '') IS NOT NULL
                   " . ($visibleEmployeeFilter !== '' ? "AND COALESCE(e.status, '') <> 'Unhired'" : '') . "
             ");
             $stmt = $pdo->query("
                 SELECT ot.*, e.name AS emp_name, e.employee_id AS emp_code, e.department AS emp_department, e.role AS emp_role,
-                       e.id_picture_path AS contract_signed_photo
+                       e.contract_signed_photo_path, e.health_card_photo_path
                 FROM onboarding_tasks ot
                 JOIN employees e ON ot.employee_id = e.id
                 WHERE ot.task NOT IN (
@@ -1590,7 +1919,7 @@ try {
 
                 if (!$empRow) {
                     $stmtIns = $pdo->prepare("INSERT INTO employees (employee_id, name, email, department, role, status) VALUES (?, ?, ?, ?, ?, 'Onboarding')");
-                    $stmtIns->execute([$code, $authUser['name'] ?? 'Employee', $authUser['email'] ?? '', $authUser['department'] ?? 'General', $authUser['position'] ?? '']);
+                    $stmtIns->execute([$code, $authUser['name'] ?? 'Employee', $authUser['email'] ?? '', normalizeEmployeeDepartment($authUser['department'] ?? ''), $authUser['position'] ?? '']);
                     $empDbId = $pdo->lastInsertId();
                     startOnboardingChecklist($pdo, $empDbId, $DEFAULT_ONBOARDING_TASKS);
                 } else {
@@ -1669,6 +1998,192 @@ try {
         respondJSON(['message' => 'Onboarding task added.', 'task' => $stmtTask->fetch()], 201);
     }
 
+    if (preg_match('#^onboarding/(\d+)/contract-signed-photo$#', $route, $matches) && $requestMethod === 'POST') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+        ensureContractSignedPhotoColumn($pdo);
+        $taskId = (int)$matches[1];
+
+        $taskSql = "
+            SELECT ot.id AS task_id, ot.employee_id, e.status AS employee_status, e.contract_signed_photo_path
+            FROM onboarding_tasks ot
+            JOIN employees e ON e.id = ot.employee_id
+            WHERE ot.id = ?
+              AND LOWER(BTRIM(ot.task)) = LOWER('Contract Signed')
+        ";
+        if (isRestrictedHrAccount($authUser)) {
+            $taskSql .= " AND COALESCE(e.status, '') <> 'Unhired'";
+        }
+        $taskStmt = $pdo->prepare($taskSql);
+        $taskStmt->execute([$taskId]);
+        $taskRow = $taskStmt->fetch();
+        if (!$taskRow) respondError('Contract Signed onboarding task not found.', 404);
+
+        if (empty($_FILES['file']) || !isset($_FILES['file']['tmp_name']) || $_FILES['file']['tmp_name'] === '') {
+            respondError('A signed contract picture file is required.', 400);
+        }
+        $uploadedFile = $_FILES['file'];
+        if ($uploadedFile['error'] !== UPLOAD_ERR_OK) {
+            respondError('The signed contract picture could not be processed. Please try another file.', 400);
+        }
+        if ($uploadedFile['size'] > 5 * 1024 * 1024) {
+            respondError('The signed contract picture must be 5 MB or smaller.', 400);
+        }
+
+        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($uploadedFile['tmp_name']);
+        $allowedTypes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        if (!isset($allowedTypes[$mimeType]) || !getimagesize($uploadedFile['tmp_name'])) {
+            respondError('Only valid JPG, PNG, and WebP signed contract pictures are accepted.', 415);
+        }
+
+        $photoDirectory = __DIR__ . '/applicant-id-photos';
+        if (!is_dir($photoDirectory) && !mkdir($photoDirectory, 0700, true) && !is_dir($photoDirectory)) {
+            respondError('Unable to save the signed contract picture.', 500);
+        }
+
+        $employeeId = (int)$taskRow['employee_id'];
+        $filename = 'employee-' . $employeeId . '-contract-' . bin2hex(random_bytes(12)) . '.' . $allowedTypes[$mimeType];
+        $targetPath = $photoDirectory . '/' . $filename;
+        if (!move_uploaded_file($uploadedFile['tmp_name'], $targetPath)) {
+            respondError('Unable to save the signed contract picture.', 500);
+        }
+        chmod($targetPath, 0600);
+
+        try {
+            $pdo->beginTransaction();
+            $updateEmployee = $pdo->prepare('UPDATE employees SET contract_signed_photo_path = ? WHERE id = ?');
+            $updateEmployee->execute([$filename, $employeeId]);
+            if ($updateEmployee->rowCount() !== 1) {
+                throw new RuntimeException('Employee signed contract picture was not updated.');
+            }
+
+            $pdo->prepare("UPDATE onboarding_tasks SET status = 'Completed' WHERE id = ?")->execute([$taskId]);
+            $remainingTasks = $pdo->prepare("SELECT COUNT(*) FROM onboarding_tasks WHERE employee_id = ? AND status <> 'Completed'");
+            $remainingTasks->execute([$employeeId]);
+            if ((int)$remainingTasks->fetchColumn() === 0) {
+                $pdo->prepare("UPDATE employees SET status = 'Active' WHERE id = ? AND status = 'Onboarding'")->execute([$employeeId]);
+            }
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            @unlink($targetPath);
+            throw $error;
+        }
+
+        if (!empty($taskRow['contract_signed_photo_path'])) {
+            $existingPath = $photoDirectory . '/' . basename($taskRow['contract_signed_photo_path']);
+            $existingReference = $pdo->prepare('SELECT 1 FROM employees WHERE contract_signed_photo_path = ? LIMIT 1');
+            $existingReference->execute([$taskRow['contract_signed_photo_path']]);
+            if (!$existingReference->fetchColumn() && is_file($existingPath)) {
+                @unlink($existingPath);
+            }
+        }
+
+        respondJSON([
+            'message' => 'Signed contract picture uploaded and saved to the employee profile.',
+            'photo_path' => $filename,
+            'employee_id' => $employeeId,
+            'task_id' => $taskId
+        ]);
+    }
+
+    if (preg_match('#^onboarding/(\d+)/health-card-photo$#', $route, $matches) && $requestMethod === 'POST') {
+        $authUser = requireAuth();
+        requireRole($authUser, 'admin');
+        $taskId = (int)$matches[1];
+
+        $taskSql = "
+            SELECT ot.id AS task_id, ot.employee_id, e.status AS employee_status, e.health_card_photo_path
+            FROM onboarding_tasks ot
+            JOIN employees e ON e.id = ot.employee_id
+            WHERE ot.id = ?
+              AND LOWER(BTRIM(ot.task)) = LOWER('Health Card Picture')
+        ";
+        if (isRestrictedHrAccount($authUser)) {
+            $taskSql .= " AND COALESCE(e.status, '') <> 'Unhired'";
+        }
+        $taskStmt = $pdo->prepare($taskSql);
+        $taskStmt->execute([$taskId]);
+        $taskRow = $taskStmt->fetch();
+        if (!$taskRow) respondError('Health Card Picture onboarding task not found.', 404);
+
+        if (empty($_FILES['file']) || !isset($_FILES['file']['tmp_name']) || $_FILES['file']['tmp_name'] === '') {
+            respondError('A health card picture file is required.', 400);
+        }
+        $uploadedFile = $_FILES['file'];
+        if ($uploadedFile['error'] !== UPLOAD_ERR_OK) {
+            respondError('The health card picture could not be processed. Please try another file.', 400);
+        }
+        if ($uploadedFile['size'] > 5 * 1024 * 1024) {
+            respondError('The health card picture must be 5 MB or smaller.', 400);
+        }
+
+        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($uploadedFile['tmp_name']);
+        $allowedTypes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        if (!isset($allowedTypes[$mimeType]) || !getimagesize($uploadedFile['tmp_name'])) {
+            respondError('Only valid JPG, PNG, and WebP health card pictures are accepted.', 415);
+        }
+
+        $photoDirectory = __DIR__ . '/applicant-id-photos';
+        if (!is_dir($photoDirectory) && !mkdir($photoDirectory, 0700, true) && !is_dir($photoDirectory)) {
+            respondError('Unable to save the health card picture.', 500);
+        }
+
+        $employeeId = (int)$taskRow['employee_id'];
+        $filename = 'employee-' . $employeeId . '-health-card-' . bin2hex(random_bytes(12)) . '.' . $allowedTypes[$mimeType];
+        $targetPath = $photoDirectory . '/' . $filename;
+        if (!move_uploaded_file($uploadedFile['tmp_name'], $targetPath)) {
+            respondError('Unable to save the health card picture.', 500);
+        }
+        chmod($targetPath, 0600);
+
+        try {
+            $pdo->beginTransaction();
+            $updateEmployee = $pdo->prepare('UPDATE employees SET health_card_photo_path = ? WHERE id = ?');
+            $updateEmployee->execute([$filename, $employeeId]);
+            if ($updateEmployee->rowCount() !== 1) {
+                throw new RuntimeException('Employee health card picture was not updated.');
+            }
+
+            $pdo->prepare("UPDATE onboarding_tasks SET status = 'Completed' WHERE id = ?")->execute([$taskId]);
+            $remainingTasks = $pdo->prepare("SELECT COUNT(*) FROM onboarding_tasks WHERE employee_id = ? AND status <> 'Completed'");
+            $remainingTasks->execute([$employeeId]);
+            if ((int)$remainingTasks->fetchColumn() === 0) {
+                $pdo->prepare("UPDATE employees SET status = 'Active' WHERE id = ? AND status = 'Onboarding'")->execute([$employeeId]);
+            }
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            @unlink($targetPath);
+            throw $error;
+        }
+
+        if (!empty($taskRow['health_card_photo_path'])) {
+            $existingPath = $photoDirectory . '/' . basename($taskRow['health_card_photo_path']);
+            $existingReference = $pdo->prepare("
+                SELECT 1 FROM applicants WHERE health_card_photo_path = ?
+                UNION ALL
+                SELECT 1 FROM employees WHERE health_card_photo_path = ?
+                LIMIT 1
+            ");
+            $existingReference->execute([$taskRow['health_card_photo_path'], $taskRow['health_card_photo_path']]);
+            if (!$existingReference->fetchColumn() && is_file($existingPath)) {
+                @unlink($existingPath);
+            }
+        }
+
+        respondJSON([
+            'message' => 'Health card picture uploaded and saved to the employee profile.',
+            'photo_path' => $filename,
+            'employee_id' => $employeeId,
+            'task_id' => $taskId
+        ]);
+    }
+
     if (preg_match('#^onboarding/(\d+)$#', $route, $matches) && $requestMethod === 'PUT') {
         $authUser = requireAuth();
         requireRole($authUser, 'admin');
@@ -1739,7 +2254,12 @@ try {
               AND COALESCE(employee_id, '') NOT IN ('ADMIN001', 'ADMIN002')
               {$visibleEmployeeFilter}
         ")->fetch()['cnt'];
-        $totalApps = (int)$pdo->query("SELECT COUNT(*) as cnt FROM applicants a WHERE a.status NOT IN ('Rejected', 'Hired', 'Interviewing')" . hiddenUnhiredApplicantFilter($authUser))->fetch()['cnt'];
+        $totalApps = (int)$pdo->query("
+            SELECT COUNT(*) as cnt
+            FROM applicants a
+            WHERE a.status NOT IN ('Rejected', 'Hired', 'Interviewing')
+              " . hiddenUnhiredApplicantFilter($authUser)
+        )->fetch()['cnt'];
 
         $thirtyDaysAgo = date('Y-m-d', strtotime('-30 days'));
         $stmtNewHires = $pdo->prepare("SELECT COUNT(*) as cnt FROM employees WHERE date(created_at) >= ?{$visibleEmployeeFilter}");
@@ -1978,7 +2498,7 @@ try {
         $authUser = requireAuth();
         $department = trim((string)($authUser['department'] ?? ''));
         if ($department === '' || strcasecmp($department, 'General') === 0) {
-            $department = 'Human Resources';
+            $department = 'HR';
         }
         respondJSON([
             'certificateNo' => "COE-{$authUser['employee_id']}-" . substr(time(), -4),
@@ -1988,7 +2508,7 @@ try {
             'position' => $authUser['position'] ?: 'Staff',
             'department' => $department,
             'status' => 'Active',
-            'companyName' => 'Toursphere',
+            'companyName' => '2GO Travel',
             'signatory' => 'HR Director / Personnel Department'
         ]);
     }

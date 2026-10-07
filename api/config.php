@@ -108,7 +108,7 @@ function describeSystemActivity(string $route, string $method): string {
     $route = trim($route, '/');
     $method = strtoupper($method);
 
-    if ($route === 'auth/login' && $method === 'POST') return 'signed in';
+    if (($route === 'auth/login' || $route === 'auth/verify-login-otp') && $method === 'POST') return 'logged in';
     if ($route === 'users/profile' && $method === 'PUT') return 'updated their account profile';
     if ($route === 'users/password' && $method === 'PUT') return 'changed their password';
     if ($route === 'users' && $method === 'POST') return 'created a user account';
@@ -144,6 +144,7 @@ function recordSystemActivity($data, int $code): void {
     $route = $GLOBALS['route'] ?? '';
     $method = strtoupper($GLOBALS['requestMethod'] ?? ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
     if ($code < 200 || $code >= 300 || !in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) return;
+    if ($route === 'auth/login' && !empty($data['requires_otp'])) return;
     if ($route === 'ai/chat' || strpos($route, 'auth/forgot-password') === 0 || strpos($route, 'auth/resend-otp') === 0 || strpos($route, 'auth/verify-otp') === 0) return;
 
     $activity = describeSystemActivity($route, $method);
@@ -155,7 +156,7 @@ function recordSystemActivity($data, int $code): void {
     }
     $actorName = trim((string)($user['name'] ?? ''));
     if ($actorName === '') {
-        $actorName = $route === 'applicants' ? 'Applicant' : 'Public user';
+        $actorName = $route === 'applicants' ? 'Applicant' : 'Admin';
     }
     $actorId = isset($user['id']) ? (int)$user['id'] : null;
     $actorRole = (string)($user['role'] ?? ($route === 'applicants' ? 'applicant' : ''));

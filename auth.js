@@ -135,9 +135,58 @@ async function loginWithBackend(email, password) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Unable to connect to the HRMS database server.');
 
+  if (data.requires_otp) {
+    clearAuth();
+    return {
+      requiresOtp: true,
+      challengeId: data.challenge_id,
+      email: data.email
+    };
+  }
+
+  storeAuthenticatedSession(data);
+  return data.user;
+}
+
+async function verifyAdminLoginOtp(challengeId, otp) {
+  const verificationUrl = window.getApiUrl('/auth/verify-login-otp');
+  let res;
+  try {
+    res = await fetch(verificationUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challenge_id: challengeId, otp })
+    });
+  } catch (error) {
+    throw new Error(`Unable to reach the HRMS API at ${verificationUrl}. Start Apache, verify PostgreSQL is running, and open the app through Apache (not as a local file).`);
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Unable to verify the email code.');
+
+  storeAuthenticatedSession(data);
+  return data.user;
+}
+
+async function resendAdminLoginOtp(challengeId) {
+  const resendUrl = window.getApiUrl('/auth/resend-login-otp');
+  let res;
+  try {
+    res = await fetch(resendUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challenge_id: challengeId })
+    });
+  } catch (error) {
+    throw new Error(`Unable to reach the HRMS API at ${resendUrl}. Start Apache, verify PostgreSQL is running, and open the app through Apache (not as a local file).`);
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Unable to resend the email code.');
+  return data;
+}
+
+function storeAuthenticatedSession(data) {
   storeToken(data.token);
   sessionStorage.setItem('hrms_current_user', JSON.stringify(data.user));
-  return data.user;
 }
 
 // CURRENT USER

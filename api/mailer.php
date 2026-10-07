@@ -9,6 +9,34 @@ if (!file_exists($autoload)) {
 }
 require_once $autoload;
 
+function sendAdminLoginVerificationEmail(string $recipient, string $otp): void {
+    if (!MAIL_HOST || !MAIL_USERNAME || !MAIL_PASSWORD || !MAIL_FROM_ADDRESS) {
+        throw new RuntimeException('SMTP email settings are incomplete.');
+    }
+
+    $mail = new PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host = MAIL_HOST;
+    $mail->Port = MAIL_PORT;
+    $mail->SMTPAuth = true;
+    $mail->Username = MAIL_USERNAME;
+    $mail->Password = MAIL_PASSWORD;
+    $mail->SMTPSecure = MAIL_ENCRYPTION === 'ssl'
+        ? PHPMailer::ENCRYPTION_SMTPS
+        : PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->CharSet = 'UTF-8';
+    $mail->setFrom(MAIL_FROM_ADDRESS, MAIL_FROM_NAME);
+    $mail->addAddress($recipient);
+    $mail->isHTML(true);
+    $mail->Subject = 'HRMS Admin Login Verification Code';
+    $mail->Body = '<p>A sign-in attempt for your HRMS Admin/HR account requires email verification.</p>'
+        . '<p>Your six-digit verification code is:</p>'
+        . '<p style="font-size:24px;font-weight:bold;letter-spacing:6px;">' . htmlspecialchars($otp, ENT_QUOTES, 'UTF-8') . '</p>'
+        . '<p>This code expires in 5 minutes. If you did not attempt to sign in, you can ignore this email.</p>';
+    $mail->AltBody = "Your HRMS login verification code is {$otp}. It expires in 5 minutes.";
+    $mail->send();
+}
+
 function sendPasswordResetEmail(string $recipient, string $otp): void {
     if (!MAIL_HOST || !MAIL_USERNAME || !MAIL_PASSWORD || !MAIL_FROM_ADDRESS) {
         throw new RuntimeException('SMTP email settings are incomplete.');
@@ -49,7 +77,8 @@ function sendInterviewScheduledEmail(string $recipient, array $interview): void 
     $details = [
         'Applicant' => $interview['applicant_name'],
         'Position' => $interview['position'] ?: 'Not specified',
-        'Date and time' => $interview['scheduled_at'],
+        'Interview Date' => $interview['interview_date'],
+        'Interview Time' => $interview['interview_time'],
         'Interviewer' => $interview['interviewer'],
         'Location' => $interview['location'] ?: 'To be confirmed',
         'Notes' => $interview['notes'] ?: 'None'
@@ -77,7 +106,7 @@ function sendInterviewScheduledEmail(string $recipient, array $interview): void 
     $mail->setFrom(MAIL_FROM_ADDRESS, MAIL_FROM_NAME);
     $mail->addAddress($recipient);
     $mail->isHTML(true);
-    $mail->Subject = 'Your HRMS interview has been scheduled';
+    $mail->Subject = 'Your interview has been scheduled';
     $mail->Body = '<p>Hello ' . $escape($interview['applicant_name']) . ',</p>'
         . '<p>Your interview has been scheduled. Here are the details:</p>'
         . '<table style="width:100%;max-width:640px;border-collapse:collapse;">' . $rows . '</table>'

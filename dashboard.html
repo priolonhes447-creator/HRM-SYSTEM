@@ -599,9 +599,7 @@ html[data-theme="dark"] .notification-item-icon { background: #1D2F2F; color: #8
 .page-container { padding: 30px; }
 .section { display: none; animation: fadeIn 0.3s ease; }
 .section.active { display: block; }
-#employee-module[hidden],
 #unhired-employees[hidden],
-#admin-employee-module-link[hidden],
 #admin-unhired-module-link[hidden] { display: none !important; }
 #sidebarNav [hidden],
 .page-container .section[hidden] { display: none !important; }
@@ -658,6 +656,7 @@ tr:hover { background: #f9fafb; }
 .status-pending { background: #FEF3C7; color: #92400E; }
 .status-rejected { background: #FEE2E2; color: #991B1B; }
 .status-neutral { background: #E5E7EB; color: #374151; }
+.employee-certification-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 
 /* ================= FORMS ================= */
 .form-group { margin-bottom: 15px; }
@@ -924,6 +923,8 @@ html[data-theme="dark"] .recent-activities-refresh:hover { background: var(--sur
 .candidate-detail strong{display:block;overflow-wrap:anywhere;font-size:14px;font-weight:600}
 .candidate-document-previews{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:22px}
 .candidate-photo-preview{min-width:0}
+#employee-health-card-document[hidden]{display:none!important}
+#employee-contract-signed-document[hidden]{display:none!important}
 .candidate-photo-preview>span{display:block;margin-bottom:7px;color:#6B7280;font-size:12px;font-weight:600}
 .candidate-photo-frame{display:grid;place-items:center;min-height:190px;padding:8px;border:1px solid var(--border);background:#F8FAFC;color:#6B7280;font-size:13px;text-align:center}
 .candidate-photo-frame.square{aspect-ratio:1;min-height:0}
@@ -1308,7 +1309,7 @@ html[data-theme="dark"] .recent-activities-refresh:hover { background: var(--sur
         padding: 15px;
     }
     .stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
         gap: 12px;
     }
     .form-row {
@@ -1347,6 +1348,116 @@ html[data-theme="dark"] .recent-activities-refresh:hover { background: var(--sur
         width: 38px;
         height: 38px;
         font-size: 15px;
+    }
+    .table-responsive table {
+        min-width: 620px;
+    }
+    .sidebar a,
+    .sidebar-menu-group > summary {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+    .sidebar-submenu a {
+        padding-left: 33px;
+    }
+}
+
+@media (max-width: 560px) {
+    body {
+        min-width: 0;
+    }
+    header {
+        padding: 10px 12px;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .header-actions {
+        width: auto;
+        margin-left: auto;
+    }
+    .page-container {
+        padding: 12px;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .content-card {
+        padding: 14px;
+        border-radius: 10px;
+    }
+    .btn,
+    button,
+    .btn-sm {
+        min-height: 44px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-size: 14px;
+    }
+    .side-menu,
+    .sidebar-navigation,
+    .sidebar-submenu {
+        overflow-x: hidden;
+    }
+    .modal {
+        width: calc(100vw - 16px);
+        padding: 16px 14px 14px;
+        border-radius: 12px;
+    }
+    .form-row,
+    .settings-fields,
+    .theme-options {
+        grid-template-columns: 1fr;
+    }
+    .table-responsive {
+        margin-top: 8px;
+    }
+    .table-responsive table {
+        min-width: 540px;
+    }
+    .notification-panel {
+        right: -12px;
+        left: -12px;
+        width: auto;
+    }
+    .status-badge,
+    .recent-activity-role,
+    .onb-tag {
+        white-space: nowrap;
+    }
+    .sidebar {
+        width: min(280px, 85vw);
+    }
+    .main-content {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 420px) {
+    #page-title {
+        font-size: 16px;
+        max-width: 150px;
+        line-height: 1.3;
+    }
+    .brand-name {
+        font-size: 17px;
+    }
+    .notification-panel {
+        max-width: calc(100vw - 16px);
+    }
+    .user-profile-btn {
+        max-width: 100%;
+        padding: 4px 6px;
+    }
+    .card-header {
+        gap: 10px;
+    }
+    .btn {
+        width: 100%;
+    }
+    .settings-actions {
+        justify-content: stretch;
     }
 }
 
@@ -1390,6 +1501,11 @@ header { min-height: 70px; border-bottom: 1px solid var(--border); box-shadow: 0
 .stat-card { border-left: 3px solid var(--primary); padding: 22px; }
 .stat-card h3 { color: var(--text-muted); font-size: 13px; font-weight: 600; }
 .stat-card .value { font-family: 'Manrope', sans-serif; font-variant-numeric: tabular-nums; }
+.stat-card-filter { width: 100%; color: inherit; text-align: left; cursor: pointer; transition: box-shadow .18s ease, background .18s ease, border-color .18s ease; }
+.stat-card-filter:hover { box-shadow: 0 5px 16px rgba(8,126,120,.13); }
+.stat-card-filter.is-active { border-color: var(--primary) !important; background: #EAF4F1; box-shadow: 0 0 0 3px rgba(8,126,120,.2), 0 5px 16px rgba(8,126,120,.12); }
+.stat-card-filter:focus-visible { outline: 3px solid rgba(8,126,120,.45); outline-offset: 3px; }
+html[data-theme="dark"] .stat-card-filter.is-active { background: #203430; box-shadow: 0 0 0 3px rgba(101,200,185,.22), 0 5px 16px rgba(0,0,0,.2); }
 .content-card { padding: 24px; }
 .card-header { gap: 16px; }
 .card-header h3 { font-size: 17px; }
@@ -1690,7 +1806,6 @@ html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background:
             <div id="employee-role-links"></div>
         </div>
     </details>
-    <a href="#" id="admin-employee-module-link" hidden onclick="showEmployeeCategory('employee-module')" title="Employee" aria-label="Employee"><i class="fa-solid fa-user-check"></i> <span>Employee</span></a>
     <a href="#" id="admin-unhired-module-link" hidden onclick="showEmployeeCategory('unhired-employees')" title="Unhired Employees" aria-label="Unhired Employees"><i class="fa-solid fa-user-clock"></i> <span>Unhired</span></a>
 
     <div class="menu-category">Communication</div>
@@ -1787,6 +1902,10 @@ html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background:
                     <h3>Complete Onboarding</h3>
                     <div class="value" id="dash-completed-onboarding">0</div>
                 </div>
+                <div class="stat-card" id="dashboard-announcements-card" style="border-color: var(--primary); cursor:pointer;" role="link" tabindex="0" onclick="showSection('announcements')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('announcements');}">
+                    <h3>Total Announcements</h3>
+                    <div class="value" id="dash-announcements-total">0</div>
+                </div>
             </div>
 
             <div class="content-card recent-activities-card">
@@ -1835,35 +1954,21 @@ html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background:
                                 <th>Name</th>
                                 <th>Department</th>
                                 <th>Role</th>
+                                <th id="employee-onboarding-status-heading" hidden>Status</th>
+                                <th id="employee-certification-status-heading" hidden>Certification Status</th>
                                 <th id="employee-actions-heading">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="employee-table-body">
-                            <tr><td colspan="5" class="empty-state">Loading employees...</td></tr>
+                            <tr><td colspan="7" class="empty-state">Loading employees...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
-
-        <div id="employee-module" class="section" hidden>
-            <div class="content-card">
-                <div class="card-header"><h3>Employee</h3></div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr><th>ID</th><th>Name</th><th>Department</th><th>Role</th><th>Certification</th><th>Action</th></tr>
-                        </thead>
-                        <tbody id="complete-employee-table-body">
-                            <tr><td colspan="6" class="empty-state">Loading employees...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="content-card">
+            <div class="content-card" id="employee-certification-card">
                 <div class="card-header"><h3>Employee Certification</h3></div>
                 <div id="employee-certification-details" aria-live="polite">
-                    <p style="color:var(--text-muted);">Select an employee to view and download their Certificate of Employment.</p>
+                    <p style="color:var(--text-muted);">Select View Certification from an employee's directory row to view and download their Certificate of Employment.</p>
                 </div>
             </div>
         </div>
@@ -2082,8 +2187,8 @@ html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background:
                 <div class="card-header"><div><h3>Applicants Ready for Interview</h3></div></div>
                 <div class="table-responsive">
                     <table>
-                        <thead><tr><th>Candidate</th><th>Position</th><th>Date and Time</th><th>Interviewer</th><th>Location</th><th>Notes</th><th>Status</th></tr></thead>
-                        <tbody id="interview-table-body"><tr><td colspan="7" class="empty-state">Loading interviews...</td></tr></tbody>
+                        <thead><tr><th>Candidate</th><th>Position</th><th>Date and Time</th><th>Interviewer</th><th>Location</th><th>Notes</th><th id="interview-status-header">Status</th></tr></thead>
+                        <tbody id="interview-table-body"><tr><td colspan="6" class="empty-state">Loading interviews...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -2094,8 +2199,8 @@ html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background:
                 </summary>
                 <div class="table-responsive">
                     <table>
-                        <thead><tr><th>Candidate</th><th>Position</th><th>Date and Time</th><th>Interviewer</th><th>Location</th><th>Notes</th><th>Status</th></tr></thead>
-                        <tbody id="interview-outcome-table-body"><tr><td colspan="7" class="empty-state">Loading interview outcomes...</td></tr></tbody>
+                        <thead><tr><th>Candidate</th><th>Position</th><th>Date and Time</th><th>Interviewer</th><th>Location</th><th>Notes</th><th id="interview-outcome-status-header">Status</th></tr></thead>
+                        <tbody id="interview-outcome-table-body"><tr><td colspan="6" class="empty-state">Loading interview outcomes...</td></tr></tbody>
                     </table>
                 </div>
             </details>
@@ -2134,11 +2239,7 @@ html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background:
             <!-- 6. ANNOUNCEMENTS MODULE -->
         <div id="announcements" class="section">
             <div class="stats-grid">
-                <div class="stat-card" style="border-color: var(--primary);">
-                    <h3>Total Announcements</h3>
-                    <div class="value" id="ann-total">0</div>
-                </div>
-                <div class="stat-card" style="border-color: var(--accent);">
+                <div class="stat-card stat-card-filter" id="announcements-mine-filter" style="border-color: var(--accent);" role="button" tabindex="0" aria-pressed="false" aria-label="Filter announcements published by you" onclick="toggleAnnouncementsMineFilter()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAnnouncementsMineFilter();}">
                     <h3>Published By You</h3>
                     <div class="value" id="ann-mine">0</div>
                 </div>
@@ -2164,7 +2265,7 @@ html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background:
                 </div>
                 <div class="content-card">
                     <div class="card-header">
-                        <h3>All Announcements</h3>
+                        <h3 id="announcement-list-heading">All Announcements</h3>
                         <button class="btn btn-primary" onclick="loadAdminAnnouncements()"><i class="fa-solid fa-rotate"></i> Refresh</button>
                     </div>
                     <table>
@@ -2174,7 +2275,7 @@ html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background:
                                 <th>Content</th>
                                 <th>Author</th>
                                 <th>Date</th>
-                                <th>Action</th>
+                                <th id="announcement-action-header">Action</th>
                             </tr>
                         </thead>
                         <tbody id="announcement-table-body">
@@ -2386,17 +2487,17 @@ html[data-theme="dark"] .ness-message-error { border-color: #6B3434; background:
                     <div class="candidate-photo-preview"><span>SSS Document Picture</span><div class="candidate-photo-frame" id="employee-sss-photo-preview">Not uploaded</div></div>
                     <div class="candidate-photo-preview"><span>Pag-IBIG Document Picture</span><div class="candidate-photo-frame" id="employee-pag-ibig-photo-preview">Not uploaded</div></div>
                     <div class="candidate-photo-preview"><span>NBI Document Picture</span><div class="candidate-photo-frame" id="employee-nbi-photo-preview">Not uploaded</div></div>
-                    <div class="candidate-photo-preview"><span>Health Card Picture</span><div class="candidate-photo-frame" id="employee-health-card-photo-preview">Not uploaded</div></div>
+                    <div class="candidate-photo-preview" id="employee-health-card-document" hidden><span>Health Card Picture</span><div class="candidate-photo-frame" id="employee-health-card-photo-preview"></div></div>
                     <div class="candidate-photo-preview"><span>PSA Picture</span><div class="candidate-photo-frame" id="employee-psa-photo-preview">Not uploaded</div></div>
                 </div>
             </div>
 
-            <div class="employee-profile-section" style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
+            <div class="employee-profile-section" id="employee-contract-signed-document" hidden style="background:#FFF; border:1px solid #E5E7EB; border-radius:10px; padding:14px;">
                 <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
                     <i class="fa-solid fa-file-signature"></i> Contract Signed
                 </div>
                 <div class="candidate-document-previews" style="margin-top:0;">
-                    <div class="candidate-photo-preview"><span>Signed Contract Picture</span><div class="candidate-photo-frame" id="employee-contract-signed-photo-preview">Not uploaded</div></div>
+                    <div class="candidate-photo-preview"><span>Signed Contract Picture</span><div class="candidate-photo-frame" id="employee-contract-signed-photo-preview"></div></div>
                 </div>
             </div>
 
@@ -2735,7 +2836,7 @@ async function showCompletedOnboarding() {
 
 // ================= NAVIGATION LOGIC =================
 function showSection(sectionId) {
-    if (['employee-module', 'unhired-employees'].includes(sectionId) && !canAccessEmployeeStatusModules()) return;
+    if (sectionId === 'unhired-employees' && !canAccessEmployeeStatusModules()) return;
     if (sectionId === 'unhired') return;
     closeMobileSidebar();
     if (sectionId !== 'onboarding') closeOnboardingChecklists();
@@ -2763,7 +2864,6 @@ function showSection(sectionId) {
     const titles = {
         'dashboard': 'Dashboard Overview',
         'employees': 'Employee Records Management',
-        'employee-module': 'Employee',
         'unhired-employees': 'Unhired Employees',
         'settings': 'Settings',
         'about': 'About the System',
@@ -2779,7 +2879,7 @@ function showSection(sectionId) {
 }
 
 function showSectionFromMenu(sectionId) {
-    if (['employee-module', 'unhired-employees'].includes(sectionId) && !canAccessEmployeeStatusModules()) return;
+    if (sectionId === 'unhired-employees' && !canAccessEmployeeStatusModules()) return;
     if (sectionId === 'unhired') return;
     // Programmatically trigger section (for Quick Actions)
     if (sectionId !== 'onboarding') closeOnboardingChecklists();
@@ -2803,7 +2903,6 @@ function showSectionFromMenu(sectionId) {
     const titles = {
         'dashboard': 'Dashboard Overview',
         'employees': 'Employee Records Management',
-        'employee-module': 'Employee',
         'unhired-employees': 'Unhired Employees',
         'settings': 'Settings',
         'about': 'About the System',
@@ -2929,8 +3028,9 @@ function formatDate(dateStr) {
 
 async function handleContractUpload(input) {
     const file = input && input.files && input.files[0];
+    const taskId = input?.dataset?.taskId;
     const employeeId = input?.dataset?.employeeId;
-    if (!file || !employeeId) return;
+    if (!file || !taskId || !employeeId) return;
 
     const button = input.parentElement?.querySelector('.contract-upload-btn');
     if (button) {
@@ -2943,7 +3043,7 @@ async function handleContractUpload(input) {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await apiFetch(`/employees/${employeeId}/2x2-photo`, {
+        const response = await apiFetch(`/onboarding/${taskId}/contract-signed-photo`, {
             method: 'POST',
             body: formData
         });
@@ -2954,24 +3054,54 @@ async function handleContractUpload(input) {
         }
         input.value = '';
 
-        const row = document.querySelector(`.employee-record-row[data-id="${employeeId}"]`);
-        if (row && response?.photo_path) {
-            row.dataset['2x2Photo'] = response.photo_path;
-        }
-
         await Promise.all([loadOnboarding(), loadEmployees(), loadDashboardStats()]);
 
         if (currentEmployeeDetailId && Number(currentEmployeeDetailId) === Number(employeeId)) {
             viewEmployee(Number(employeeId));
         }
 
-        alert(response.message || 'Contract Signed picture uploaded successfully.');
+        alert(response.message || 'Signed contract picture uploaded successfully.');
     } catch (error) {
         if (button) {
             button.innerHTML = '<i class="fa-solid fa-upload"></i> Upload picture';
             button.disabled = false;
         }
-        alert('Failed to upload Contract Signed picture: ' + error.message);
+        alert('Failed to upload signed contract picture: ' + error.message);
+    }
+}
+
+async function handleHealthCardUpload(input) {
+    const file = input?.files?.[0];
+    const taskId = input?.dataset?.taskId;
+    const employeeId = input?.dataset?.employeeId;
+    if (!file || !taskId || !employeeId) return;
+
+    const button = input.parentElement?.querySelector('.health-card-upload-btn');
+    const originalButtonMarkup = button?.innerHTML;
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await apiFetch(`/onboarding/${taskId}/health-card-photo`, {
+            method: 'POST',
+            body: formData
+        });
+
+        input.value = '';
+        await Promise.all([loadOnboarding(), loadEmployees(), loadDashboardStats()]);
+        if (currentEmployeeDetailId && Number(currentEmployeeDetailId) === Number(employeeId)) {
+            viewEmployee(Number(employeeId));
+        }
+        alert(response.message || 'Health card picture uploaded successfully.');
+    } catch (error) {
+        if (button && originalButtonMarkup) button.innerHTML = originalButtonMarkup;
+        alert('Failed to upload health card picture: ' + error.message);
+    } finally {
+        if (button) button.disabled = false;
     }
 }
 
@@ -2991,6 +3121,7 @@ function statusBadge(status) {
         'Pending': 'status-pending',
         'Interviewing': 'status-pending',
         'Onboarding': 'status-pending',
+        'Complete Onboarding': 'status-active',
         'Completed': 'status-active',
         'Complete': 'status-active',
         'Unhired': 'status-rejected',
@@ -3521,13 +3652,13 @@ function renderEmployeeRoleLinks(employees) {
     }));
 }
 
-function renderEmployeeRecordRow(emp, actions) {
+function renderEmployeeRecordRow(emp, actions, showOnboardingStatus = false, showCertificationStatus = false) {
     return `
         <tr class="employee-record-row" data-id="${emp.id}"
             data-empid="${escapeHtml(emp.employee_id)}"
             data-name="${escapeHtml(emp.name)}"
             data-email="${escapeHtml(emp.email)}"
-            data-department="${escapeHtml(emp.department || 'General')}"
+            data-department="${escapeHtml(emp.department || 'HR')}"
             data-role="${escapeHtml(emp.role || '')}"
             data-status="${escapeHtml(emp.status)}"
             data-phone="${escapeHtml(emp.phone || '')}"
@@ -3555,12 +3686,19 @@ function renderEmployeeRecordRow(emp, actions) {
             data-nbi-photo="${escapeHtml(emp.nbi_photo_path || '')}"
             data-health-card-photo="${escapeHtml(emp.health_card_photo_path || '')}"
             data-psa-photo="${escapeHtml(emp.psa_photo_path || '')}"
-            data-contract-signed-photo="${escapeHtml(emp.id_picture_path || '')}"
+            data-contract-signed-photo="${escapeHtml(emp.contract_signed_photo_path || '')}"
             data-applied-date="${escapeHtml(emp.applied_date || '')}">
             <td>${escapeHtml(emp.employee_id)}</td>
             <td><a href="javascript:void(0)" onclick="viewEmployee(${Number(emp.id)})" style="color:var(--primary); font-weight:600; text-decoration:none;">${escapeHtml(emp.name)}</a></td>
-            <td>${escapeHtml(emp.department || 'General')}</td>
+            <td>${escapeHtml(emp.department || 'HR')}</td>
             <td>${escapeHtml(emp.role || '')}</td>
+            ${showOnboardingStatus ? `<td>${statusBadge(Number(emp.onboarding_completed) === 1 ? 'Complete Onboarding' : (emp.status || ''))}</td>` : ''}
+            ${showCertificationStatus ? `<td>${emp.status === 'Complete' ? `
+                <div class="employee-certification-cell">
+                    <button class="btn btn-primary btn-sm" onclick="openEmployeeCertification(${Number(emp.id)})">View Certification</button>
+                    ${emp.certificate_received_at ? '<span class="status-badge status-active">Already Received</span>' : ''}
+                </div>
+            ` : '<span style="color:var(--text-muted);">-</span>'}</td>` : ''}
             ${actions}
         </tr>
     `;
@@ -3568,7 +3706,6 @@ function renderEmployeeRecordRow(emp, actions) {
 
 async function loadEmployees() {
     const tbody = document.getElementById('employee-table-body');
-    const completeTbody = document.getElementById('complete-employee-table-body');
     const unhiredTbody = document.getElementById('unhired-employee-table-body');
     if (!isHrDashboardAccount()) return;
     try {
@@ -3583,12 +3720,15 @@ async function loadEmployees() {
             && (!isRestrictedHr || emp.status !== 'Unhired')
         );
         employeeRecordsCache = nonAdminEmployees;
-        const completeEmployees = nonAdminEmployees.filter(employee => employee.status === 'Complete');
         const unhiredEmployees = nonAdminEmployees.filter(employee => employee.status === 'Unhired');
-        renderEmployeeRoleLinks(nonAdminEmployees);
         const canManageCategories = canAccessEmployeeStatusModules();
+        renderEmployeeRoleLinks(nonAdminEmployees);
         const actionHeading = document.getElementById('employee-actions-heading');
         if (actionHeading) actionHeading.hidden = !canManageCategories;
+        const onboardingStatusHeading = document.getElementById('employee-onboarding-status-heading');
+        if (onboardingStatusHeading) onboardingStatusHeading.hidden = !canManageCategories;
+        const certificationStatusHeading = document.getElementById('employee-certification-status-heading');
+        if (certificationStatusHeading) certificationStatusHeading.hidden = !canManageCategories;
 
         const visibleEmployees = employeeRoleFilter
             ? nonAdminEmployees.filter(employee => (employee.role || '').trim().toLowerCase() === employeeRoleFilter.toLowerCase())
@@ -3599,22 +3739,8 @@ async function loadEmployees() {
                     <button class="btn btn-success btn-sm" onclick="moveEmployeeToStatus(${Number(emp.id)}, 'Complete')">Complete</button>
                     <button class="btn btn-danger btn-sm" onclick="moveEmployeeToStatus(${Number(emp.id)}, 'Unhired')">Unhired</button>
                 </td>` : ''}
-            `)).join('')
-            : `<tr><td colspan="${canManageCategories ? 5 : 4}" class="empty-state">${employeeRoleFilter ? `No ${escapeHtml(employeeRoleFilter)} employees found.` : 'No employees found.'}</td></tr>`;
-
-        if (completeTbody) {
-            completeTbody.innerHTML = completeEmployees.length
-                ? completeEmployees.map(emp => renderEmployeeRecordRow(emp, `
-                    <td>
-                        <button class="btn btn-primary btn-sm" onclick="openEmployeeCertification(${Number(emp.id)})">View certificate</button>
-                        <div style="margin-top:6px;">${emp.certificate_received_at
-                            ? '<span class="status-badge status-active">Already received</span>'
-                            : '<span class="status-badge status-pending">Not received yet</span>'}</div>
-                    </td>
-                    <td><button class="btn btn-primary btn-sm" onclick="proceedEmployeeToOtherSystem(${Number(emp.id)})">Proceed</button></td>
-                `)).join('')
-                : `<tr><td colspan="6" class="empty-state">No employees marked complete.</td></tr>`;
-        }
+            `, canManageCategories, canManageCategories)).join('')
+            : `<tr><td colspan="${canManageCategories ? 7 : 4}" class="empty-state">${employeeRoleFilter ? `No ${escapeHtml(employeeRoleFilter)} employees found.` : 'No employees found.'}</td></tr>`;
 
         if (unhiredTbody) {
             unhiredTbody.innerHTML = unhiredEmployees.length
@@ -3625,8 +3751,14 @@ async function loadEmployees() {
         }
     } catch (err) {
         const errorRow = `<tr><td colspan="6" class="empty-state" style="color:#DC2626;">Failed to load employees: ${escapeHtml(err.message)}</td></tr>`;
-        tbody.innerHTML = errorRow;
-        if (completeTbody) completeTbody.innerHTML = errorRow;
+        const canManageCategories = canAccessEmployeeStatusModules();
+        const onboardingStatusHeading = document.getElementById('employee-onboarding-status-heading');
+        if (onboardingStatusHeading) onboardingStatusHeading.hidden = !canManageCategories;
+        const certificationStatusHeading = document.getElementById('employee-certification-status-heading');
+        if (certificationStatusHeading) certificationStatusHeading.hidden = !canManageCategories;
+        const actionHeading = document.getElementById('employee-actions-heading');
+        if (actionHeading) actionHeading.hidden = !canManageCategories;
+        tbody.innerHTML = `<tr><td colspan="${canManageCategories ? 7 : 4}" class="empty-state" style="color:#DC2626;">Failed to load employees: ${escapeHtml(err.message)}</td></tr>`;
         if (unhiredTbody) unhiredTbody.innerHTML = errorRow;
     }
 }
@@ -3638,6 +3770,7 @@ function openEmployeeCertification(employeeId) {
         alert('Employee record is no longer available. Refresh the employee list and try again.');
         return;
     }
+    showSection('employees');
     const details = document.getElementById('employee-certification-details');
     const receivedAt = employee.certificate_received_at
         ? `Received on ${escapeHtml(formatDate(employee.certificate_received_at))}`
@@ -3662,16 +3795,6 @@ function openEmployeeCertification(employeeId) {
     `;
 }
 
-function proceedEmployeeToOtherSystem(employeeId) {
-    if (!canAccessEmployeeStatusModules()) return;
-    const employee = employeeRecordsCache.find(record => Number(record.id) === Number(employeeId));
-    if (!employee) {
-        alert('Employee record is no longer available. Refresh the employee list and try again.');
-        return;
-    }
-    alert('This employee’s information will be sent to the other system.');
-}
-
 function downloadEmployeeCertification(employeeId) {
     if (!canAccessEmployeeStatusModules()) return;
     const employee = employeeRecordsCache.find(record => Number(record.id) === Number(employeeId));
@@ -3684,7 +3807,7 @@ function downloadEmployeeCertification(employeeId) {
     const certificateNumber = `COE-${employee.employee_id}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
     const employeeDepartment = String(employee.department || '').trim();
     const certificateDepartment = !employeeDepartment || employeeDepartment.toLowerCase() === 'general'
-        ? 'Human Resources'
+        ? 'HR'
         : employeeDepartment;
     const safe = value => escapeHtml(value || 'Not specified').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const certificate = `<!DOCTYPE html>
@@ -3700,7 +3823,7 @@ h1{font-size:38px;letter-spacing:4px;color:#244b66;margin:28px 0}
 .signature{margin:56px auto 0;padding-top:10px;border-top:1px solid #64748b;width:260px;font:14px Arial,sans-serif}
 @media print{body{padding:0;background:#fff}.certificate{min-height:100vh;border-color:#315b78}}
 </style></head><body><main class="certificate">
-<div class="company">Toursphere</div>
+<div class="company">2GO Travel</div>
 <h1>CERTIFICATE OF EMPLOYMENT</h1>
 <p class="body">This is to certify that <span class="name">${safe(employee.name)}</span> (Employee ID: ${safe(employee.employee_id)}) is employed with our organization as <strong>${safe(employee.role)}</strong> in the <strong>${safe(certificateDepartment)}</strong> department.</p>
 <p class="body">This certification is issued upon request for whatever lawful purpose it may serve.</p>
@@ -3739,7 +3862,7 @@ async function moveEmployeeToStatus(id, status) {
     if (!canAccessEmployeeStatusModules()) return;
     if (!['Complete', 'Unhired'].includes(status)) return;
     const moduleName = status === 'Complete' ? 'Employee' : 'Unhired';
-    if (!confirm(`Move this employee to the ${moduleName} module?`)) return;
+    if (status === 'Unhired' && !confirm(`Move this employee to the ${moduleName} module?`)) return;
     let comment = '';
     if (status === 'Unhired') {
         const enteredComment = prompt('Enter a comment for moving this employee to Unhired:');
@@ -3761,6 +3884,9 @@ async function moveEmployeeToStatus(id, status) {
             body: JSON.stringify({ status, comment })
         });
         await loadEmployees();
+        if (status === 'Complete') {
+            alert('This employee and their information will be sent to HR2.');
+        }
     } catch (err) {
         alert(`Failed to move employee to ${moduleName}: ${err.message}`);
     }
@@ -3843,7 +3969,7 @@ function viewEmployee(empId) {
     const d = row.dataset;
     const name = d.name || '-';
     const position = d.role || '-';
-    const department = d.department || 'General';
+    const department = d.department || 'HR';
 
     document.getElementById('detail-name').innerText = name;
     document.getElementById('detail-role-dept').innerText = (position ? `${position} · ` : '') + department;
@@ -3873,6 +3999,11 @@ function viewEmployee(empId) {
     document.getElementById('detail-pag-ibig').innerText = d.pagIbig || '-';
     document.getElementById('detail-nbi').innerText = d.nbi || '-';
     document.getElementById('detail-applied-date').innerText = d.appliedDate ? formatDate(d.appliedDate) : '-';
+
+    const healthCardDocument = document.getElementById('employee-health-card-document');
+    if (healthCardDocument) healthCardDocument.hidden = !d.healthCardPhoto;
+    const contractSignedDocument = document.getElementById('employee-contract-signed-document');
+    if (contractSignedDocument) contractSignedDocument.hidden = !d.contractSignedPhoto;
 
     document.getElementById('employeeDetailModal').classList.add('show');
     const documents = [
@@ -3929,7 +4060,8 @@ async function loadEmployeeDocumentPreview(employeeId, documentType, targetId, l
     try {
         const response = await fetch(window.getApiUrl(`/employees/${employeeId}/${documentType}`), { headers: authHeaders() });
         if (!response.ok) throw new Error(`Unable to load ${label.toLowerCase()}.`);
-        const imageUrl = URL.createObjectURL(await response.blob());
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
         if (requestId !== employeeProfileRequest || !document.getElementById('employeeDetailModal').classList.contains('show')) {
             URL.revokeObjectURL(imageUrl);
             return;
@@ -3938,6 +4070,16 @@ async function loadEmployeeDocumentPreview(employeeId, documentType, targetId, l
         employeePreviewUrls.push(imageUrl);
         const preview = document.getElementById(targetId);
         if (!preview) return;
+        if (blob.type === 'application/pdf') {
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = 'Open PDF resume';
+            link.style.cssText = 'color:var(--primary);font-weight:700;text-decoration:underline;';
+            preview.replaceChildren(link);
+            return;
+        }
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'candidate-photo-zoom';
@@ -4043,7 +4185,9 @@ async function loadApplicants() {
         const applicants = await apiFetch('/applicants');
         applicantRecords = applicants || [];
         const notQualifiedApplicants = applicantRecords.filter(app => app.status === 'Rejected');
-        const pipelineApplicants = applicantRecords.filter(app => !['Rejected', 'Hired', 'Interviewing'].includes(app.status));
+        const pipelineApplicants = applicantRecords.filter(app =>
+            !['Rejected', 'Hired', 'Interviewing'].includes(app.status)
+        );
         tbody.innerHTML = pipelineApplicants.length
             ? renderApplicantRows(pipelineApplicants)
             : `<tr><td colspan="3" class="empty-state">No applicants found in the pipeline.</td></tr>`;
@@ -4085,8 +4229,14 @@ async function openApplicantDetails(id, source = 'applicants') {
     if (requestId !== applicantDetailsRequest) return;
 
     document.getElementById('applicant-details-title').textContent = applicant.name || 'Applicant Details';
+    const emergencyContact = [
+        applicant.emergency_contact_name,
+        applicant.emergency_contact_phone
+    ].filter(value => String(value || '').trim() !== '').join(' - ') || applicant.emergency_contact;
     const fields = [
         ['Position Applied For', applicant.position || 'Not specified'],
+        ['Department', applicant.department || 'General'],
+        ['Application Status', applicant.status],
         ['First Name', applicant.first_name],
         ['Middle Name', applicant.middle_name],
         ['Surname', applicant.surname],
@@ -4102,8 +4252,7 @@ async function openApplicantDetails(id, source = 'applicants') {
         ['Pag-IBIG Number', applicant.pag_ibig_number],
         ['NBI Number', applicant.nbi_number],
         ['Home Address', applicant.address],
-        ['Emergency Contact Name', applicant.emergency_contact_name || applicant.emergency_contact],
-        ['Emergency Contact Phone Number', applicant.emergency_contact_phone],
+        ['Emergency Contact', emergencyContact],
         ['Applied Date', formatDate(applicant.applied_date)]
     ];
     const fieldsMarkup = fields.map(([label, value]) => `
@@ -4112,7 +4261,7 @@ async function openApplicantDetails(id, source = 'applicants') {
     const photosMarkup = `
         <div class="candidate-photo-preview"><span>Identification Document</span><div class="candidate-photo-frame" id="applicant-id-photo-preview">${applicant.id_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
         <div class="candidate-photo-preview"><span>2×2 Picture</span><div class="candidate-photo-frame square" id="applicant-2x2-photo-preview">${applicant.id_picture_path ? 'Loading image...' : 'Not uploaded'}</div></div>
-        <div class="candidate-photo-preview"><span>Resume</span><div class="candidate-photo-frame" id="applicant-resume-preview">${applicant.resume_path ? 'Loading image...' : 'Not uploaded'}</div></div>
+        <div class="candidate-photo-preview"><span>Resume</span><div class="candidate-photo-frame" id="applicant-resume-preview">${applicant.resume_path ? 'Loading document...' : 'Not uploaded'}</div></div>
         <div class="candidate-photo-preview"><span>SSS Document Picture</span><div class="candidate-photo-frame" id="applicant-sss-photo-preview">${applicant.sss_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
         <div class="candidate-photo-preview"><span>Pag-IBIG Document Picture</span><div class="candidate-photo-frame" id="applicant-pag-ibig-photo-preview">${applicant.pag_ibig_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
         <div class="candidate-photo-preview"><span>NBI Document Picture</span><div class="candidate-photo-frame" id="applicant-nbi-photo-preview">${applicant.nbi_photo_path ? 'Loading image...' : 'Not uploaded'}</div></div>
@@ -4165,8 +4314,9 @@ function showApplicantRejectionForm(id) {
 async function loadApplicantPhotoPreview(id, documentType, targetId, label, requestId) {
     try {
         const response = await fetch(window.getApiUrl(`/applicants/${id}/${documentType}`), { headers: authHeaders() });
-        if (!response.ok) throw new Error('Image unavailable');
-        const imageUrl = URL.createObjectURL(await response.blob());
+        if (!response.ok) throw new Error('Document unavailable');
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
         if (requestId !== applicantDetailsRequest || !document.getElementById('applicantDetailsModal').classList.contains('show')) {
             URL.revokeObjectURL(imageUrl);
             return;
@@ -4174,6 +4324,16 @@ async function loadApplicantPhotoPreview(id, documentType, targetId, label, requ
         applicantPreviewUrls.push(imageUrl);
         const preview = document.getElementById(targetId);
         if (!preview) return;
+        if (blob.type === 'application/pdf') {
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = 'Open PDF resume';
+            link.style.cssText = 'color:var(--primary);font-weight:700;text-decoration:underline;';
+            preview.replaceChildren(link);
+            return;
+        }
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'candidate-photo-zoom';
@@ -4186,7 +4346,7 @@ async function loadApplicantPhotoPreview(id, documentType, targetId, label, requ
         preview.replaceChildren(button);
     } catch (error) {
         const preview = document.getElementById(targetId);
-        if (requestId === applicantDetailsRequest && preview) preview.textContent = 'Image unavailable';
+        if (requestId === applicantDetailsRequest && preview) preview.textContent = 'Document unavailable';
     }
 }
 
@@ -4406,6 +4566,12 @@ async function loadInterviews() {
     const tbody = document.getElementById('interview-table-body');
     const outcomeTbody = document.getElementById('interview-outcome-table-body');
     if (!tbody || !outcomeTbody) return;
+    const currentUser = getCurrentUser();
+    const canUpdateInterviewStatus = currentUser?.role === 'hr'
+        || (currentUser?.email || '').trim().toLowerCase() === 'phnhes@gmail.com';
+    const statusColumnCount = canUpdateInterviewStatus ? 7 : 6;
+    document.getElementById('interview-status-header').hidden = !canUpdateInterviewStatus;
+    document.getElementById('interview-outcome-status-header').hidden = !canUpdateInterviewStatus;
     try {
         const interviews = await apiFetch('/interviews');
         const allInterviews = interviews || [];
@@ -4413,21 +4579,21 @@ async function loadInterviews() {
         const outcomeInterviews = allInterviews.filter(interview => outcomeStatuses.includes(interview.status));
         const activeInterviews = allInterviews.filter(interview => !outcomeStatuses.includes(interview.status));
         if (activeInterviews.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No interviews scheduled.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${statusColumnCount}" class="empty-state">No interviews scheduled.</td></tr>`;
         } else {
-            tbody.innerHTML = renderInterviewRows(activeInterviews, true);
+            tbody.innerHTML = renderInterviewRows(activeInterviews, canUpdateInterviewStatus, canUpdateInterviewStatus);
         }
 
         outcomeTbody.innerHTML = outcomeInterviews.length
-            ? renderInterviewRows(outcomeInterviews, false)
-            : '<tr><td colspan="7" class="empty-state">No applicants did not pass or miss their interview.</td></tr>';
+            ? renderInterviewRows(outcomeInterviews, false, canUpdateInterviewStatus)
+            : `<tr><td colspan="${statusColumnCount}" class="empty-state">No applicants did not pass or miss their interview.</td></tr>`;
     } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:#DC2626;">Failed to load interviews: ${escapeHtml(error.message)}</td></tr>`;
-        outcomeTbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:#DC2626;">Failed to load interview outcomes: ${escapeHtml(error.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${statusColumnCount}" class="empty-state" style="color:#DC2626;">Failed to load interviews: ${escapeHtml(error.message)}</td></tr>`;
+        outcomeTbody.innerHTML = `<tr><td colspan="${statusColumnCount}" class="empty-state" style="color:#DC2626;">Failed to load interview outcomes: ${escapeHtml(error.message)}</td></tr>`;
     }
 }
 
-function renderInterviewRows(interviews, allowStatusUpdate) {
+function renderInterviewRows(interviews, allowStatusUpdate, showStatusColumn = true) {
     const statuses = ['Completed', 'Did Not Pass the Interview', 'No Show'];
     return interviews.map(interview => {
             const applicantId = Number(interview.applicant_id);
@@ -4451,7 +4617,7 @@ function renderInterviewRows(interviews, allowStatusUpdate) {
                     <td>${escapeHtml(interview.interviewer)}</td>
                     <td>${escapeHtml(interview.location || 'Not specified')}</td>
                     <td>${escapeHtml(interview.notes || 'Not provided')}</td>
-                    <td class="interview-status-cell">${statusCell}</td>
+                    ${showStatusColumn ? `<td class="interview-status-cell">${statusCell}</td>` : ''}
                 </tr>
             `;
         }).join('');
@@ -4567,7 +4733,7 @@ async function loadOnboarding() {
                                 <strong>${escapeHtml(grp.emp_name)}</strong>
                                 <div class="onb-meta-tags">
                                     <span class="onb-tag onb-tag-code"><i class="fa-solid fa-id-badge"></i> ${escapeHtml(grp.emp_code)}</span>
-                                    <span class="onb-tag onb-tag-dept">${escapeHtml(grp.emp_department || 'General')}</span>
+                                    <span class="onb-tag onb-tag-dept">${escapeHtml(grp.emp_department || 'HR')}</span>
                                 </div>
                             </div>
                         </div>
@@ -4598,18 +4764,43 @@ async function loadOnboarding() {
                             <tbody>
                                 ${grp.tasks.map(t => {
                                     const statusClass = t.status ? t.status.replace(/\s+/g, '-') : 'Pending';
+                                    const isHealthCardTask = t.task.trim().toLowerCase() === 'health card picture';
+                                    const isContractSignedTask = t.task.trim().toLowerCase() === 'contract signed';
                                     const dueCell = `<span class="onb-due-badge"><i class="fa-solid fa-calendar"></i> ${escapeHtml(formatDate(t.due_date) || 'No due date')}</span>`;
-                                    const actionButtons = t.task === 'Contract Signed'
-                                        ? grp.contract_signed_photo
-                                            ? `<button type="button" class="btn btn-sm" onclick="event.stopPropagation(); viewContractSignedPicture(${Number(grp.employee_id)})" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#EAF4F1; color:var(--primary); border:1px solid #CDE4E0;"><i class="fa-solid fa-eye"></i> See the Picture</button>`
-                                            : `
-                                                <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-                                                    <button type="button" class="btn btn-sm contract-upload-btn" onclick="event.stopPropagation(); this.parentElement.querySelector('input[type=file]').click();" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#EAF4F1; color:var(--primary); border:1px solid #CDE4E0;">
-                                                        <i class="fa-solid fa-upload"></i> Upload picture
-                                                    </button>
-                                                    <input type="file" accept="image/*" data-employee-id="${Number(grp.employee_id)}" style="display:none;" onchange="handleContractUpload(this)">
-                                                </div>
-                                            `
+                                    const healthCardControls = isHealthCardTask
+                                        ? `
+                                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 0 0 28px;" onclick="event.stopPropagation();">
+                                                <button type="button" class="btn btn-sm health-card-upload-btn" onclick="this.parentElement.querySelector('input[type=file]').click();" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#EAF4F1; color:var(--primary); border:1px solid #CDE4E0;">
+                                                    <i class="fa-solid fa-upload"></i> ${grp.health_card_photo_path ? 'Replace picture' : 'Upload picture'}
+                                                </button>
+                                                <input type="file" accept="image/jpeg,image/png,image/webp" data-task-id="${Number(t.id)}" data-employee-id="${Number(grp.employee_id)}" style="display:none;" onchange="handleHealthCardUpload(this)">
+                                                ${grp.health_card_photo_path ? '<span style="color:var(--accent); font-size:12px;"><i class="fa-solid fa-circle-check"></i> Saved to Employee Profile</span>' : ''}
+                                            </div>
+                                        `
+                                        : '';
+                                    const contractSignedControls = isContractSignedTask
+                                        ? `
+                                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 0 0 28px;" onclick="event.stopPropagation();">
+                                                <button type="button" class="btn btn-sm contract-upload-btn" onclick="this.parentElement.querySelector('input[type=file]').click();" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#EAF4F1; color:var(--primary); border:1px solid #CDE4E0;">
+                                                    <i class="fa-solid fa-upload"></i> ${grp.contract_signed_photo_path ? 'Replace picture' : 'Upload signed contract'}
+                                                </button>
+                                                <input type="file" accept="image/jpeg,image/png,image/webp" data-task-id="${Number(t.id)}" data-employee-id="${Number(grp.employee_id)}" style="display:none;" onchange="handleContractUpload(this)">
+                                                ${grp.contract_signed_photo_path ? '<span style="color:var(--accent); font-size:12px;"><i class="fa-solid fa-circle-check"></i> Saved to Employee Profile</span>' : ''}
+                                            </div>
+                                        `
+                                        : '';
+                                    const statusControl = isHealthCardTask
+                                        ? `<span class="onb-due-badge" style="${grp.health_card_photo_path ? 'color:var(--accent);' : ''}">${grp.health_card_photo_path ? 'Completed' : 'Pending'}</span>`
+                                        : isContractSignedTask
+                                            ? `<span class="onb-due-badge" style="${grp.contract_signed_photo_path ? 'color:var(--accent);' : ''}">${grp.contract_signed_photo_path ? 'Completed' : 'Pending'}</span>`
+                                        : `
+                                            <select class="onb-status-select ${statusClass}" data-status="${escapeHtml(t.status)}" onchange="updateOnboardingTaskStatus(${t.id}, this.value)">
+                                                <option value="Pending" ${t.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                                <option value="Completed" ${t.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                            </select>
+                                        `;
+                                    const actionButtons = isContractSignedTask && grp.contract_signed_photo_path
+                                        ? `<button type="button" class="btn btn-sm" onclick="event.stopPropagation(); viewContractSignedPicture(${Number(grp.employee_id)})" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#EAF4F1; color:var(--primary); border:1px solid #CDE4E0;"><i class="fa-solid fa-eye"></i> See the Picture</button>`
                                         : '';
                                     return `
                                     <tr class="onb-task-row">
@@ -4618,15 +4809,14 @@ async function loadOnboarding() {
                                                 <i class="fa-solid ${t.status === 'Completed' ? 'fa-circle-check' : 'fa-circle-dot'}"></i>
                                                 <span>${escapeHtml(t.task)}</span>
                                             </div>
+                                            ${healthCardControls}
+                                            ${contractSignedControls}
                                         </td>
                                         <td>
                                             ${dueCell}
                                         </td>
                                         <td>
-                                            <select class="onb-status-select ${statusClass}" data-status="${escapeHtml(t.status)}" onchange="updateOnboardingTaskStatus(${t.id}, this.value)">
-                                                <option value="Pending" ${t.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                                <option value="Completed" ${t.status === 'Completed' ? 'selected' : ''}>Completed</option>
-                                            </select>
+                                            ${statusControl}
                                         </td>
                                         <td style="text-align:right;">
                                             ${actionButtons}
@@ -4666,7 +4856,7 @@ async function loadCompletedOnboarding() {
             <tr>
                 <td>${escapeHtml(group.emp_name)}</td>
                 <td>${escapeHtml(group.emp_code)}</td>
-                <td>${escapeHtml(group.emp_department || 'General')}</td>
+                <td>${escapeHtml(group.emp_department || 'HR')}</td>
                 <td>${escapeHtml(group.emp_role || '-')}</td>
                 <td>${Number(group.completed_count)} of ${Number(group.task_count)}</td>
             </tr>
@@ -4683,7 +4873,7 @@ async function updateOnboardingTaskStatus(id, status) {
             method: 'PUT',
             body: JSON.stringify({ status })
         });
-        await Promise.all([loadOnboarding(), loadDashboardStats()]);
+        await Promise.all([loadOnboarding(), loadDashboardStats(), loadEmployees()]);
     } catch (err) {
         alert('Failed to update task: ' + err.message);
         await loadOnboarding();
@@ -4695,7 +4885,7 @@ async function deleteOnboardingTask(id) {
     try {
         await apiFetch(`/onboarding/${id}`, { method: 'DELETE' });
         alert('Onboarding task deleted.');
-        await Promise.all([loadOnboarding(), loadDashboardStats()]);
+        await Promise.all([loadOnboarding(), loadDashboardStats(), loadEmployees()]);
     } catch (err) {
         alert('Failed to delete task: ' + err.message);
     }
@@ -4740,44 +4930,96 @@ async function autoRefreshData() {
 
 // ================= ANNOUNCEMENTS MODULE =================
 let editingAnnouncementId = null;
+let announcementsPublishedByMeOnly = false;
+
+function toggleAnnouncementsMineFilter() {
+    announcementsPublishedByMeOnly = !announcementsPublishedByMeOnly;
+    const filterCard = document.getElementById('announcements-mine-filter');
+    if (filterCard) {
+        filterCard.classList.toggle('is-active', announcementsPublishedByMeOnly);
+        filterCard.setAttribute('aria-pressed', String(announcementsPublishedByMeOnly));
+    }
+    const heading = document.getElementById('announcement-list-heading');
+    if (heading) {
+        heading.textContent = announcementsPublishedByMeOnly ? 'Announcements Published By You' : 'All Announcements';
+    }
+    loadAdminAnnouncements();
+}
 
 async function loadAdminAnnouncements() {
     const tbody = document.getElementById('announcement-table-body');
+    const actionHeader = document.getElementById('announcement-action-header');
     if (!tbody) return;
+
+    const currentUser = getCurrentUser();
+    const isRestrictedHrAnnouncementUser = currentUser?.role === 'hr'
+        || (currentUser?.email || '').trim().toLowerCase() === 'phnhes@gmail.com';
+
+    if (actionHeader) {
+        actionHeader.hidden = isRestrictedHrAnnouncementUser;
+    }
 
     try {
         const announcements = await apiFetch('/announcements');
 
         const user = getCurrentUser();
-        const myName = user ? user.name : '';
+        const myName = (user?.name || '').trim().toLocaleLowerCase();
 
         // Update stat cards
-        document.getElementById('ann-total').innerText = announcements ? announcements.length : 0;
-        const mine = announcements ? announcements.filter(a => a.author === myName).length : 0;
+        const totalAnnouncements = announcements ? announcements.length : 0;
+        const totalAnnouncementsDashboardEl = document.getElementById('dash-announcements-total');
+        if (totalAnnouncementsDashboardEl) totalAnnouncementsDashboardEl.innerText = totalAnnouncements;
+        const annTotalElement = document.getElementById('ann-total');
+        if (annTotalElement) annTotalElement.innerText = totalAnnouncements;
+        const mine = announcements ? announcements.filter(a => (a.author || '').trim().toLocaleLowerCase() === myName).length : 0;
         document.getElementById('ann-mine').innerText = mine;
+        const filterCard = document.getElementById('announcements-mine-filter');
+        if (filterCard) {
+            filterCard.classList.toggle('is-active', announcementsPublishedByMeOnly);
+            filterCard.setAttribute('aria-pressed', String(announcementsPublishedByMeOnly));
+        }
+        const heading = document.getElementById('announcement-list-heading');
+        if (heading) {
+            heading.textContent = announcementsPublishedByMeOnly ? 'Announcements Published By You' : 'All Announcements';
+        }
 
-        if (!announcements || announcements.length === 0) {
+        const visibleAnnouncements = announcementsPublishedByMeOnly
+            ? (announcements || []).filter(a => myName && (a.author || '').trim().toLocaleLowerCase() === myName)
+            : (announcements || []);
+
+        if (visibleAnnouncements.length === 0) {
+            const emptyMessage = announcementsPublishedByMeOnly
+                ? 'You have not published any announcements yet.'
+                : 'No announcements published yet.';
             tbody.innerHTML = `
-                <tr><td colspan="5" style="text-align:center; color:#9CA3AF;">No announcements published yet.</td></tr>
+                <tr><td colspan="${isRestrictedHrAnnouncementUser ? 4 : 5}" style="text-align:center; color:#9CA3AF;">${emptyMessage}</td></tr>
             `;
             return;
         }
 
-        tbody.innerHTML = announcements.map(a => `
-            <tr>
-                <td><strong>${escapeHtml(a.title)}</strong></td>
-                <td style="max-width:260px; color:#4B5563;">${escapeHtml(a.content)}</td>
-                <td>${escapeHtml(a.author || 'HR')}</td>
-                <td>${escapeHtml(formatDate(a.created_at))}</td>
-                <td>
-                    <button class="btn btn-primary btn-sm" onclick="editAnnouncement(${a.id})">Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">Delete</button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = visibleAnnouncements.map(a => {
+            const actionMarkup = isRestrictedHrAnnouncementUser
+                ? ''
+                : `
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="editAnnouncement(${a.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">Delete</button>
+                    </td>
+                `;
+
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(a.title)}</strong></td>
+                    <td style="max-width:260px; color:#4B5563;">${escapeHtml(a.content)}</td>
+                    <td>${escapeHtml(a.author || 'HR')}</td>
+                    <td>${escapeHtml(formatDate(a.created_at))}</td>
+                    ${actionMarkup}
+                </tr>
+            `;
+        }).join('');
     } catch (err) {
         tbody.innerHTML = `
-            <tr><td colspan="5" style="text-align:center; color:#DC2626;">Unable to load announcements. Is the backend running on port 5000?</td></tr>
+            <tr><td colspan="${isRestrictedHrAnnouncementUser ? 4 : 5}" style="text-align:center; color:#DC2626;">Unable to load announcements. Is the backend running on port 5000?</td></tr>
         `;
     }
 }
@@ -4858,9 +5100,8 @@ window.onload = function() {
     initializeNessChat();
     const canManageEmployeeCategories = canAccessEmployeeStatusModules();
     const adminOnlyElements = [
-        document.getElementById('admin-employee-module-link'),
         document.getElementById('admin-unhired-module-link'),
-        document.getElementById('employee-module'),
+        document.getElementById('employee-certification-card'),
         document.getElementById('unhired-employees'),
     ];
     if (!canManageEmployeeCategories) {

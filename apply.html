@@ -213,6 +213,40 @@ input:focus, select:focus, textarea:focus{
     input, select, textarea{ font-size:16px; } /* Prevent mobile Safari zoom */
 }
 
+@media (max-width: 480px) {
+    body {
+        padding: 18px 12px 20px;
+    }
+    .apply-container {
+        max-width: 100%;
+    }
+    .brand-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+    }
+    .brand-header h1 {
+        font-size: 20px;
+    }
+    .apply-card {
+        padding: 18px 14px;
+        border-radius: 12px;
+    }
+    .requirement-note {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .btn-submit {
+        min-height: 48px;
+        font-size: 15px;
+    }
+    input, select, textarea {
+        min-height: 46px;
+    }
+}
+
 body{padding:42px 20px 28px;background-color:var(--background);background-image:linear-gradient(rgba(8,126,120,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(8,126,120,.035) 1px,transparent 1px);background-size:32px 32px}
 .apply-container{max-width:880px;animation:portalEnter .45s ease both}
 .brand-header{display:flex;align-items:center;justify-content:center;gap:16px;text-align:left}
@@ -266,8 +300,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
             <div class="form-grid">
                 <div class="form-group full-width">
                     <label for="position">Position Applied For</label>
-                    <select id="position" name="position">
-                        <option value="">Select a position (optional)...</option>
+                    <select id="position" name="position" required>
+                        <option value="">Select a position...</option>
                         <option value="Driver">Driver</option>
                         <option value="Staff">Staff</option>
                         <option value="Cashier">Cashier</option>
@@ -309,8 +343,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
                     <input type="tel" id="phone" name="phone" required autocapitalize="off" inputmode="numeric" maxlength="11" pattern="[0-9]{1,11}" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 11)" title="Enter no more than 11 digits." placeholder="0917 000 0000">
                 </div>
                 <div class="form-group">
-                    <label>Date of Birth</label>
-                    <input type="date" id="date_of_birth" name="date_of_birth" onchange="calculateAge()">
+                    <label>Date of Birth <span class="required">*</span></label>
+                    <input type="date" id="date_of_birth" name="date_of_birth" required onchange="calculateAge()">
                 </div>
                 <div class="form-group">
                     <label>Age</label>
@@ -379,9 +413,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
                     <p class="upload-name" id="pictureUploadName" aria-live="polite"></p>
                 </div>
                 <div class="form-group full-width">
-                    <label for="resume">Resume</label>
-                    <input class="upload-control" type="file" id="resume" name="resume" accept="image/jpeg,image/png,image/webp">
-                    <p class="field-hint">Upload a clear photo of your ID (JPG, PNG or WebP, up to 5 MB).</p>
+                    <label for="resume">Resume <span class="required">*</span></label>
+                    <input class="upload-control" type="file" id="resume" name="resume" accept="application/pdf,.pdf" required>
+                    <p class="field-hint">Upload your resume as a PDF file (up to 5 MB).</p>
                     <p class="upload-name" id="resumeUploadName" aria-live="polite"></p>
                 </div>
             </div>
@@ -405,12 +439,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0
                     <input class="upload-control" type="file" id="nbi_picture" name="nbi_picture" accept="image/jpeg,image/png,image/webp">
                     <p class="field-hint">JPG, PNG or WebP, up to 5 MB.</p>
                     <p class="upload-name" id="nbiUploadName" aria-live="polite"></p>
-                </div>
-                <div class="form-group">
-                    <label for="health_card_picture">Health Card Picture</label>
-                    <input class="upload-control" type="file" id="health_card_picture" name="health_card_picture" accept="image/jpeg,image/png,image/webp">
-                    <p class="field-hint">JPG, PNG or WebP, up to 5 MB.</p>
-                    <p class="upload-name" id="healthCardUploadName" aria-live="polite"></p>
                 </div>
                 <div class="form-group full-width">
                     <label for="psa_picture">PSA Picture</label>
@@ -460,7 +488,6 @@ const uploadFields = [
     ['sss_picture', 'sssUploadName'],
     ['pag_ibig_picture', 'pagIbigUploadName'],
     ['nbi_picture', 'nbiUploadName'],
-    ['health_card_picture', 'healthCardUploadName'],
     ['psa_picture', 'psaUploadName']
 ];
 
@@ -501,30 +528,105 @@ document.getElementById('applicantForm').addEventListener('reset', () => {
     }, 0);
 });
 
-function calculateAge() {
-    const dob = document.getElementById('date_of_birth').value;
-    if (!dob) return;
-    const birthDate = new Date(dob);
+const AGE_REQUIREMENTS = {
+    Staff: 20,
+    Cashier: 20,
+    'Team Leader': 20,
+    Driver: 25
+};
+
+function getMinimumAgeForPosition(position) {
+    return AGE_REQUIREMENTS[position] ?? null;
+}
+
+function calculateAgeFromDob(dateString) {
+    if (!dateString) return null;
+
+    const birthDate = new Date(`${dateString}T00:00:00`);
     const today = new Date();
+
+    if (Number.isNaN(birthDate.getTime())) return null;
+
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
         age--;
     }
-    if (age >= 0) {
+    return age >= 0 ? age : null;
+}
+
+function calculateAge() {
+    const dob = document.getElementById('date_of_birth').value;
+    const age = calculateAgeFromDob(dob);
+    if (age !== null) {
         document.getElementById('age').value = age;
     }
+    return age;
+}
+
+function validatePositionAgeRequirement() {
+    const position = positionField.value.trim();
+    const requiredAge = getMinimumAgeForPosition(position);
+    if (requiredAge === null) {
+        return true;
+    }
+
+    const dob = document.getElementById('date_of_birth').value;
+    const age = calculateAgeFromDob(dob);
+    if (!dob || age === null) {
+        const alertBox = document.getElementById('alertBox');
+        alertBox.innerText = `Applicants for ${position} must provide a valid date of birth.`;
+        alertBox.classList.add('alert-danger');
+        alertBox.style.display = 'block';
+        return false;
+    }
+
+    if (age < requiredAge) {
+        const alertBox = document.getElementById('alertBox');
+        alertBox.innerText = `Applicants for ${position} must be at least ${requiredAge} years old.`;
+        alertBox.classList.add('alert-danger');
+        alertBox.style.display = 'block';
+        return false;
+    }
+
+    return true;
+}
+
+function validateRequiredApplicantFields(form) {
+    for (const field of form.querySelectorAll('[required]')) {
+        const hasValue = field.type === 'file'
+            ? field.files.length > 0
+            : field.value.trim() !== '';
+        if (!hasValue) {
+            field.setCustomValidity('Complete this required field before submitting.');
+            field.reportValidity();
+            const clearValidationMessage = () => field.setCustomValidity('');
+            field.addEventListener('input', clearValidationMessage, { once: true });
+            field.addEventListener('change', clearValidationMessage, { once: true });
+            return false;
+        }
+        field.setCustomValidity('');
+    }
+    return form.reportValidity();
 }
 
 async function submitApplication(e) {
     e.preventDefault();
+    const form = document.getElementById('applicantForm');
     const btn = document.getElementById('submitBtn');
     const alertBox = document.getElementById('alertBox');
     
     alertBox.style.display = 'none';
     alertBox.className = 'alert-box';
 
-    const formData = new FormData(document.getElementById('applicantForm'));
+    if (!validateRequiredApplicantFields(form)) {
+        return;
+    }
+    if (!validatePositionAgeRequirement()) {
+        return;
+    }
+
+    const formData = new FormData(form);
     for (const [key, value] of formData.entries()) {
         if (typeof value === 'string') formData.set(key, value.trim());
     }
@@ -544,16 +646,32 @@ async function submitApplication(e) {
         const apiUrl = (typeof window.getApiUrl === 'function')
             ? window.getApiUrl('/applicants')
             : `${baseUrl}/index.php?route=applicants`;
+        const controller = new AbortController();
+        const requestTimeout = window.setTimeout(() => controller.abort(), 90000);
         let res;
         try {
             res = await fetch(apiUrl, {
                 method: 'POST',
-                body: formData
+                body: formData,
+                signal: controller.signal
             });
         } catch (networkError) {
+            if (controller.signal.aborted) {
+                throw new Error('The application request timed out before the server responded. Check your connection and try again. If this continues, contact HR.');
+            }
             throw new Error(`Unable to reach the HRMS API at ${apiUrl}. Start Apache, verify PostgreSQL is running, and open the form through Apache (not as a local file).`);
+        } finally {
+            window.clearTimeout(requestTimeout);
         }
-        const data = await res.json().catch(() => ({}));
+        const responseText = await res.text();
+        let data = {};
+        try {
+            data = responseText ? JSON.parse(responseText) : {};
+        } catch {
+            if (res.ok) {
+                throw new Error('The server returned an unreadable response. Please contact HR before submitting again.');
+            }
+        }
         if (!res.ok) throw new Error(data.error || 'Submission failed. PostgreSQL did not save the application.');
         document.getElementById('applicantForm').style.display = 'none';
         document.getElementById('successCard').style.display = 'block';

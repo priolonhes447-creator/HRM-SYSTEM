@@ -75,6 +75,22 @@ Use a HostForge Developer Hosting plan with PHP 8.2 and PostgreSQL enabled.
 
 The public application form accepts up to seven files, each no larger than 5 MB. Configure the HostForge PHP limits to allow the full multipart request (`upload_max_filesize` at least `5M`, `post_max_size` at least `40M`, and `max_file_uploads` at least `7`). Otherwise PHP may discard the submitted form before the API can validate it.
 
+The reverse proxy must also accept the complete upload. On 2026-10-08, the deployed `corehr.tour-sphere.com` portal returned a non-JSON **413 Request Entity Too Large** page from nginx/1.27.5 for a deliberately incomplete 5 MB upload, while its database health and private receipt queries returned HTTP 200. The incomplete upload cannot pass candidate validation or insert a record. This confirms a deployment upload-size mismatch independent of the database migration. The previous frontend treated the HTML 413 as an uncertain submission; the updated form recognizes HTTP 413 before parsing its body and displays the upload-limit cause immediately.
+
+The HostForge operator must configure the actual proxy serving this application, including any outer proxy, with sufficient request capacity. For Nginx, set the following directive in the applicable `http`, `server`, or `location` block, validate the configuration, and reload Nginx:
+
+```nginx
+client_max_body_size 40m;
+```
+
+Reference: https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size. Adding PHP settings or `.htaccess` rules cannot change an upstream Nginx request limit. A repository push does not configure HostForge's managed proxy; use its available upload-limit control or ask HostForge support to apply this setting for `corehr.tour-sphere.com`. Also verify the PHP multipart limits above in the deployed runtime. For a PHP built-in server, pass upload settings at process startup (it does not apply Apache `.htaccess` settings):
+
+```bash
+php -d upload_max_filesize=5M -d post_max_size=40M -d max_file_uploads=7 -S 0.0.0.0:$PORT router.php
+```
+
+After changing the hosting settings, repeat an invalid 5 MB multipart upload with required fields omitted. It should reach the application's JSON HTTP 400 validator instead of Nginx HTTP 413, without creating a candidate. Then verify a valid candidate submission and its receipt. A tiny invalid upload took approximately 11 seconds in the same investigation; worker queuing or intermittent database/network delays still require server logs if they continue after the upload limit is fixed. These public probes do not determine whether a particular earlier candidate submission was saved.
+
 ### Application submission repair
 
 Before deploying the updated `api/index.php`, `api/config.php`, and `apply.html`, back up the production database and run `repair-application-submission.sql` against the database configured for that PHP deployment. This focused migration preserves candidate rows and uploads, adds private submission receipts and lookup indexes, and replaces the shared person-name lock with a lock for each normalized name. It also installs any missing person-name triggers. Do not import a database dump over production to apply this repair. If the migration reports a lock timeout, it rolls back; apply it during a quiet period and verify successful completion before updating the PHP files.

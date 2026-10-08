@@ -694,11 +694,19 @@ async function submitApplication(e) {
             res = await fetch(apiUrl, {
                 method: 'POST', body: formData, signal: controller.signal
             });
+            if (res.status === 413) {
+                receiptCheckNeeded = false;
+                throw new Error('The hosting server rejected the upload because its request-size limit is too low. Your application was not saved by this request. Contact HR to fix the server upload limit, or reduce the total size of your files before retrying.');
+            }
+            if (!res.ok) receiptCheckNeeded = res.status >= 500 || res.status === 408;
             const responseText = await res.text();
             try { data = JSON.parse(responseText); }
-            catch { throw new Error('The server response could not be confirmed.'); }
+            catch {
+                throw new Error(res.ok || receiptCheckNeeded
+                    ? 'The server response could not be confirmed.'
+                    : `The hosting server rejected the application request (HTTP ${res.status}). Contact HR if this continues.`);
+            }
             if (!res.ok) {
-                receiptCheckNeeded = res.status >= 500;
                 throw new Error(data.error || 'The server could not accept your application.');
             }
             if (!data || (!data.id && !data.already_submitted)) {

@@ -46,6 +46,20 @@ function setup(fetch) {
     await invalid.submit();
     assert.equal(calls, 1); assert.equal(invalid.get('alertBox').innerText, 'Invalid document');
     console.log('PASS validation error preserved without receipt lookup');
+    let uploadLimitCalls = 0;
+    const oversized = setup(async () => {
+        uploadLimitCalls++;
+        return { ok: false, status: 413, text: async () => { throw new Error('Should not wait for HTML error body'); } };
+    });
+    await oversized.submit();
+    assert.equal(uploadLimitCalls, 1);
+    assert.match(oversized.get('alertBox').innerText, /request-size limit is too low/);
+    assert.equal(oversized.get('submitBtn').disabled, false);
+    console.log('PASS nginx HTML 413 shows upload-limit error immediately without receipt lookup');
+    const htmlRejected = setup(async () => ({ ok: false, status: 403, text: async () => '<html>Forbidden</html>' }));
+    await htmlRejected.submit();
+    assert.match(htmlRejected.get('alertBox').innerText, /HTTP 403/);
+    console.log('PASS non-JSON hosting rejection keeps the HTTP error');
     const slow = setup(() => new Promise(() => {}));
     slow.submit(); await slow.submit();
     assert.equal(slow.get('submitBtn').disabled, true);

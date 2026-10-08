@@ -1,0 +1,9 @@
+# Netlify Redirects File
+# Option A: Proxy /api/* requests to external HTTPS hosted backend (e.g. Render, Railway):
+# /api/*  https://YOUR-BACKEND-API.onrender.com/api/:splat  200!
+
+# Option B: Netlify Serverless Functions:
+# /api/*  /.netlify/functions/:splat  200
+
+# SPA fallback
+/*  /index.html  200

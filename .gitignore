@@ -1,0 +1,38 @@
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+hostforge.env
+
+# Dependencies & Node artifacts
+node_modules/
+package-lock.json
+vendor/
+composer.phar
+composer-setup.php
+
+# Local deployment artifacts and database exports
+deploy/
+backups/
+*.sql.gz
+*.sql.zip
+
+# XAMPP / Apache temporary files & logs & SQLite databases
+*.log
+latest.sql
+latest1.sql
+backend/*.log
+backend/server.log
+backend/server.stderr.log
+backend/server.stdout.log
+*.db
+backend/*.db
+backend/hrms.db
+backend/*.db-shm
+backend/*.db-wal
+
+# OS / IDE generated files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

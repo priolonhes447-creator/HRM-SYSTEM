@@ -75,6 +75,28 @@ Use a HostForge Developer Hosting plan with PHP 8.2 and PostgreSQL enabled.
 
 The public application form accepts up to seven files, each no larger than 5 MB. Configure the HostForge PHP limits to allow the full multipart request (`upload_max_filesize` at least `5M`, `post_max_size` at least `40M`, and `max_file_uploads` at least `7`). Otherwise PHP may discard the submitted form before the API can validate it.
 
+### Application submission repair
+
+Before deploying the updated `api/index.php`, `api/config.php`, and `apply.html`, back up the production database and run `repair-application-submission.sql` against the database configured for that PHP deployment. This focused migration preserves candidate rows and uploads, adds private submission receipts and lookup indexes, and replaces the shared person-name lock with a lock for each normalized name. It also installs any missing person-name triggers. Do not import a database dump over production to apply this repair. If the migration reports a lock timeout, it rolls back; apply it during a quiet period and verify successful completion before updating the PHP files.
+
+The form retains its 90-second upload/request deadline. PostgreSQL submission queries have a 10-second statement limit and a 3-second lock limit. Optional activity recording has a 2-second limit and runs after the success response is released. Receipts use 32 random bytes; the public receipt endpoint returns only whether that receipt was saved, without exposing candidate information. Uncertain requests retain their receipt for a safe manual retry; a lost response triggers a receipt lookup instead of automatically sending the files again. For pre-repair submissions without a receipt, HR must inspect the existing applicant record to determine whether it was saved.
+
+The supplied database dump contains a global advisory lock in `enforce_unique_person_name`, so a long-running employee/applicant transaction can hold up every application. This is a reproducible local defect, but it is not proof of the particular production timeout. To determine the deployed cause, correlate the HostForge access log, PHP error log, and PostgreSQL activity at the time of a slow submission. Updated PHP logs emit `HRMS submission` records with the last stage, server processing duration, HTTP status, and `database_saved` flag, without candidate details or receipt secrets. PHP processing duration begins after the web server has received/parses the multipart upload; use access-log duration to identify time spent uploading, waiting for a PHP worker, or proxy buffering. An unresponsive single-worker container can also queue submissions behind SMTP requests from other users, even though applications themselves do not send email.
+
+During an incident, run the following read-only query as the database operator. It reports blocking sessions without printing SQL text or candidate details:
+
+```sql
+SELECT pid, state, wait_event_type, wait_event,
+       clock_timestamp() - query_start AS elapsed,
+       pg_blocking_pids(pid) AS blockers
+FROM pg_stat_activity
+WHERE datname = current_database() AND pid <> pg_backend_pid();
+```
+
+Confirm the deployed PHP runtime has `pdo_pgsql` and `fileinfo`, correct database connectivity/SSL settings, writable persistent `api/applicant-id-photos` storage, and sufficient multipart limits. Test the actual public application URL and inspect the browser request URL to confirm it reaches this PHP deployment. A success from `/api/health` proves a database connection only; it does not verify INSERT permissions, triggers, uploads, or worker capacity. Do not terminate blocking production sessions before understanding their transactions.
+
+Regression checks: `node backend/test-submission-frontend.js` tests lost-response reconciliation, stable retry receipts, new-form receipts, validation errors, and the double-click guard. `python backend/test-submission.py` creates and removes a temporary PostgreSQL database and PHP server using synthetic candidate data only. It requires PostgreSQL binaries (`HRMS_TEST_PG_BIN` may override their location), PHP, and free local ports 55439/55440. It tests real multipart uploads, receipt lookup/retry, concurrent inserts, unrelated-name locks, bounded lock failure and upload cleanup, and success delivery before blocked activity logging.
+
 For HostForge's container deployment screen, use the repository root and this start command:
 
 ```bash

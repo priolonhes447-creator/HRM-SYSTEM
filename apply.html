@@ -610,6 +610,38 @@ function validateRequiredApplicantFields(form) {
     return form.reportValidity();
 }
 
+let applicationReceiptKey = '';
+function getApplicationReceiptKey() {
+    if (applicationReceiptKey) return applicationReceiptKey;
+    try { applicationReceiptKey = sessionStorage.getItem('hrms.applicationReceipt') || ''; } catch {}
+    if (!/^[a-f0-9]{64}$/.test(applicationReceiptKey)) {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        applicationReceiptKey = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        try { sessionStorage.setItem('hrms.applicationReceipt', applicationReceiptKey); } catch {}
+    }
+    return applicationReceiptKey;
+}
+function showApplicationSuccess() {
+    try { sessionStorage.removeItem('hrms.applicationReceipt'); } catch {}
+    document.getElementById('applicantForm').style.display = 'none';
+    document.getElementById('successCard').style.display = 'block';
+}
+async function checkApplicationReceipt(key) {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 15000);
+    try {
+        const res = await fetch(window.getApiUrl('/applicants/receipt'), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ submission_key: key }), signal: controller.signal,
+            cache: 'no-store'
+        });
+        if (!res.ok) return false;
+        return (await res.json()).received === true;
+    } catch { return false; }
+    finally { window.clearTimeout(timer); }
+}
+
 async function submitApplication(e) {
     e.preventDefault();
     const form = document.getElementById('applicantForm');
@@ -639,6 +671,9 @@ async function submitApplication(e) {
     formData.set('emergency_contact', [emergencyName, emergencyPhone].filter(Boolean).join(' - '));
     formData.set('department', 'General');
 
+    const receiptKey = getApplicationReceiptKey();
+    formData.set('submission_key', receiptKey);
+    let receiptCheckNeeded = false;
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
 
@@ -653,34 +688,42 @@ async function submitApplication(e) {
         const controller = new AbortController();
         const requestTimeout = window.setTimeout(() => controller.abort(), 90000);
         let res;
+        let data;
         try {
+            receiptCheckNeeded = true;
             res = await fetch(apiUrl, {
-                method: 'POST',
-                body: formData,
-                signal: controller.signal
+                method: 'POST', body: formData, signal: controller.signal
             });
+            const responseText = await res.text();
+            try { data = JSON.parse(responseText); }
+            catch { throw new Error('The server response could not be confirmed.'); }
+            if (!res.ok) {
+                receiptCheckNeeded = res.status >= 500;
+                throw new Error(data.error || 'The server could not accept your application.');
+            }
+            if (!data || (!data.id && !data.already_submitted)) {
+                throw new Error('The server response could not be confirmed.');
+            }
         } catch (networkError) {
             if (controller.signal.aborted) {
-                throw new Error('The application request timed out before the server responded. Check your connection and try again. If this continues, contact HR.');
+                throw new Error('The server response timed out.');
             }
-            throw new Error(`Unable to reach the HRMS API at ${apiUrl}. Start Apache, verify PostgreSQL is running, and open the form through Apache (not as a local file).`);
+            throw networkError;
         } finally {
             window.clearTimeout(requestTimeout);
         }
-        const responseText = await res.text();
-        let data = {};
-        try {
-            data = responseText ? JSON.parse(responseText) : {};
-        } catch {
-            if (res.ok) {
-                throw new Error('The server returned an unreadable response. Please contact HR before submitting again.');
+        showApplicationSuccess();
+    } catch (err) {
+        if (receiptCheckNeeded) {
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Confirming submission...';
+            if (await checkApplicationReceipt(receiptKey)) {
+                showApplicationSuccess();
+                return;
             }
         }
-        if (!res.ok) throw new Error(data.error || 'Submission failed. PostgreSQL did not save the application.');
-        document.getElementById('applicantForm').style.display = 'none';
-        document.getElementById('successCard').style.display = 'block';
-    } catch (err) {
-        alertBox.innerText = err.message;
+        alertBox.innerText = receiptCheckNeeded
+            ? 'We could not confirm whether your application was received. Retry using this same form; your receipt prevents a duplicate submission. If this continues, contact HR.'
+            : err.message;
         alertBox.classList.add('alert-danger');
         alertBox.style.display = 'block';
     } finally {
@@ -690,6 +733,8 @@ async function submitApplication(e) {
 }
 
 function resetForm() {
+    applicationReceiptKey = '';
+    try { sessionStorage.removeItem('hrms.applicationReceipt'); } catch {}
     document.getElementById('applicantForm').reset();
     document.getElementById('applicantForm').style.display = 'block';
     document.getElementById('successCard').style.display = 'none';

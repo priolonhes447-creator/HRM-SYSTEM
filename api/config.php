@@ -164,6 +164,8 @@ function recordSystemActivity($data, int $code): void {
 
     try {
         $pdo->exec("SET lock_timeout = '2s'");
+        $pdo->exec("SET statement_timeout = '2s'");
+        if ($route === 'applicants') $GLOBALS['hrms_submission_stage'] = 'activity_after_save';
         $stmt = $pdo->prepare(
             'INSERT INTO system_activities (actor_id, actor_name, actor_role, activity) VALUES (?, ?, ?, ?)'
         );
@@ -176,11 +178,25 @@ function recordSystemActivity($data, int $code): void {
 // JSON Output Helper Functions
 function respondJSON($data, $code = 200) {
     $json = json_encode($data, JSON_THROW_ON_ERROR);
+    if (($GLOBALS['route'] ?? '') === 'applicants' && $code >= 200 && $code < 300) {
+        $GLOBALS['hrms_submission_saved'] = true;
+    }
     http_response_code($code);
 
     if (function_exists('fastcgi_finish_request')) {
         echo $json;
         fastcgi_finish_request();
+        recordSystemActivity($data, (int)$code);
+    } elseif (($GLOBALS['route'] ?? '') === 'applicants' && $code >= 200 && $code < 300) {
+        // Apache/LiteSpeed do not necessarily provide fastcgi_finish_request.
+        // Release the response before optional activity work on those runtimes.
+        ignore_user_abort(true);
+        header('Content-Length: ' . strlen($json));
+        echo $json;
+        while (ob_get_level() > 0) {
+            if (!@ob_end_flush()) break;
+        }
+        flush();
         recordSystemActivity($data, (int)$code);
     } else {
         recordSystemActivity($data, (int)$code);

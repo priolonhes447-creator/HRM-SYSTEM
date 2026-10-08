@@ -7,6 +7,19 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/jwt.php';
 require_once __DIR__ . '/ness.php';
 
+$GLOBALS['hrms_request_started'] = microtime(true);
+$GLOBALS['hrms_submission_stage'] = 'database_connect';
+register_shutdown_function(static function (): void {
+    if (!in_array($GLOBALS['route'] ?? ($_GET['route'] ?? ''), ['applicants', 'applicants/receipt'], true)) return;
+    // No candidate details, credentials, or receipt secrets belong in logs.
+    error_log('HRMS submission ' . json_encode([
+        'stage' => $GLOBALS['hrms_submission_stage'] ?? 'unknown',
+        'database_saved' => $GLOBALS['hrms_submission_saved'] ?? false,
+        'duration_ms' => (int)((microtime(true) - $GLOBALS['hrms_request_started']) * 1000),
+        'http_status' => http_response_code()
+    ]));
+});
+
 try {
     $pdo = getDBConnection();
 } catch (Throwable $e) {
@@ -340,6 +353,16 @@ function isDuplicateApplicantSubmission(PDO $pdo, string $email, string $name, s
 // ============================================================
 
 try {
+    if ($route === 'applicants/receipt' && $requestMethod === 'POST') {
+        $pdo->exec("SET lock_timeout = '3s'");
+        $pdo->exec("SET statement_timeout = '10s'");
+        $key = trim((string)($input['submission_key'] ?? ''));
+        if (!preg_match('/^[a-f0-9]{64}$/D', $key)) respondError('Invalid application receipt.', 400);
+        header('Cache-Control: no-store');
+        $stmt = $pdo->prepare('SELECT 1 FROM applicants WHERE submission_key = ?');
+        $stmt->execute([$key]);
+        respondJSON(['received' => (bool)$stmt->fetchColumn()]);
+    }
     // --------------------------------------------------------
     // 1. AUTH ROUTES
     // --------------------------------------------------------
@@ -1204,6 +1227,21 @@ try {
     }
 
     if ($route === 'applicants' && $requestMethod === 'POST') {
+        $GLOBALS['hrms_submission_stage'] = 'validation_and_duplicate_check';
+        // Bound database work independently of the browser upload deadline.
+        $pdo->exec("SET lock_timeout = '3s'");
+        $pdo->exec("SET statement_timeout = '10s'");
+        $submissionKey = trim((string)($input['submission_key'] ?? ''));
+        if ($submissionKey !== '' && !preg_match('/^[a-f0-9]{64}$/D', $submissionKey)) {
+            respondError('Invalid application receipt. Reload the form and try again.', 400);
+        }
+        if ($submissionKey !== '') {
+            $receipt = $pdo->prepare('SELECT id FROM applicants WHERE submission_key = ?');
+            $receipt->execute([$submissionKey]);
+            if ($receipt->fetchColumn()) {
+                respondJSON(['message' => 'Your application has already been received.', 'already_submitted' => true]);
+            }
+        }
         $surname = trim($input['surname'] ?? '');
         $middleName = trim($input['middle_name'] ?? '');
         $firstName = trim($input['first_name'] ?? '');
@@ -1354,6 +1392,7 @@ try {
         }
 
         $appliedDate = $input['applied_date'] ?? date('Y-m-d');
+        $GLOBALS['hrms_submission_stage'] = 'save_uploads';
         $photoDirectory = __DIR__ . '/applicant-id-photos';
         $savedPhotos = [];
         if ($photoExtensions || $resumeExtension !== null) {
@@ -1374,7 +1413,8 @@ try {
         }
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO applicants (name, surname, middle_name, first_name, position, department, email, phone, gender, address, date_of_birth, age, place_of_birth, tin, sss_number, pag_ibig_number, nbi_number, civil_status, emergency_contact, emergency_contact_name, emergency_contact_phone, id_photo_path, id_picture_path, resume_path, sss_photo_path, pag_ibig_photo_path, nbi_photo_path, health_card_photo_path, psa_photo_path, applied_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'New')");
+            $GLOBALS['hrms_submission_stage'] = 'insert_applicant';
+            $stmt = $pdo->prepare("INSERT INTO applicants (name, surname, middle_name, first_name, position, department, email, phone, gender, address, date_of_birth, age, place_of_birth, tin, sss_number, pag_ibig_number, nbi_number, civil_status, emergency_contact, emergency_contact_name, emergency_contact_phone, id_photo_path, id_picture_path, resume_path, sss_photo_path, pag_ibig_photo_path, nbi_photo_path, health_card_photo_path, psa_photo_path, applied_date, submission_key, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'New') RETURNING id");
             $stmt->execute([
                 $name, $surname, $middleName, $firstName, $position,
                 $input['department'] ?? 'General', $input['email'] ?? '', $normalizedPhone,
@@ -1388,11 +1428,18 @@ try {
                 $savedPhotos['sss_picture'] ?? null, $savedPhotos['pag_ibig_picture'] ?? null,
                 $savedPhotos['nbi_picture'] ?? null, null,
                 $savedPhotos['psa_picture'] ?? null,
-                $appliedDate
+                $appliedDate, $submissionKey !== '' ? $submissionKey : null
             ]);
+            $applicantId = (int)$stmt->fetchColumn();
         } catch (Throwable $error) {
             foreach ($savedPhotos as $savedPhoto) @unlink($photoDirectory . '/' . $savedPhoto);
             if ($error instanceof PDOException && $error->getCode() === '23505') {
+                if ($submissionKey !== '') {
+                    $receipt->execute([$submissionKey]);
+                    if ($receipt->fetchColumn()) {
+                        respondJSON(['message' => 'Your application has already been received.', 'already_submitted' => true]);
+                    }
+                }
                 if (isDuplicateApplicantSubmission($pdo, $email, $name, $normalizedPhone)) {
                     respondJSON(['message' => 'Your application has already been received.', 'already_submitted' => true]);
                 }
@@ -1407,7 +1454,8 @@ try {
             throw $error;
         }
 
-        respondJSON(['id' => (int)$pdo->lastInsertId(), 'message' => 'Applicant added successfully.'], 201);
+        $GLOBALS['hrms_submission_stage'] = 'saved';
+        respondJSON(['id' => $applicantId, 'message' => 'Applicant added successfully.'], 201);
     }
 
     if (preg_match('#^applicants/(\d+)/hire$#', $route, $matches) && $requestMethod === 'POST') {
@@ -2582,8 +2630,12 @@ try {
 
 } catch (Throwable $e) {
     error_log('HRMS API error: ' . $e->getMessage());
+    if ($e instanceof PDOException && in_array($e->getCode(), ['55P03', '57014'], true)
+        && in_array($route, ['applicants', 'applicants/receipt'], true)) {
+        respondError('The recruitment database is busy. Please retry shortly using this same form.', 503);
+    }
     if ($e instanceof PDOException && $e->getCode() === '42703') {
-        respondError('The database schema is out of date. Back up the database, run database-migrations.sql, then try again. No data was saved.', 503);
+        respondError('The database schema is out of date. Contact HR to apply the required database migration.', 503);
     }
     if ($e instanceof PDOException && $e->getCode() === '42P01') {
         respondError('Recent activities are not set up in this database. Back up the database, run the latest database-migrations.sql, then try again.', 503);
